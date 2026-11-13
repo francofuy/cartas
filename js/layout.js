@@ -6,9 +6,10 @@ import { PAGE_W, PAGE_H } from './template.js';
 import { PAGE_GEOM, textLeft } from './paper.js';
 
 export function geometry(S) {
-  const rowH = S.paper.lineSpacing;
-  const top = PAGE_GEOM.top, left = textLeft(S.paper);
-  const right = PAGE_W - PAGE_GEOM.right, bottom = PAGE_H - PAGE_GEOM.bottom;
+  const rowH = S.paper.lineSpacing, o = S.geom || {};
+  const pw = o.pageW ?? PAGE_W, ph = o.pageH ?? PAGE_H;
+  const top = o.top ?? PAGE_GEOM.top, left = o.left ?? textLeft(S.paper);
+  const right = pw - (o.right ?? PAGE_GEOM.right), bottom = ph - (o.bottom ?? PAGE_GEOM.bottom);
   return { rowH, top, left, right, bottom, rows: Math.max(1, Math.floor((bottom - top) / rowH)) };
 }
 

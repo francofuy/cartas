@@ -10,6 +10,7 @@ import { icon, hydrateIcons } from './icons.js';
 import { drawWordmark } from './wordmark.js';
 import { loadTheme, applyTheme, Background } from './theme.js';
 import { setupLook, paintRange } from './look.js';
+import { setupRefs } from './refs.js';
 
 /* ------------------------------------------------------------------ */
 /* Ajustes y almacenamiento simple                                     */
@@ -35,6 +36,9 @@ const DEFAULTS = {
   noteSize: 17,
   overflow: 'back',      // al llenarse una cara: 'back' = sigue en el dorso, 'new' = otra hoja
   printMode: 'duplex',   // 'duplex' | 'single' | 'manual'
+  refMode: 'panel',      // dónde se ve la referencia: 'panel' (al costado) | 'float' (ventana) | 'ghost' (tenue sobre la hoja)
+  refFont: 'legible',    // 'legible' | 'hand' (con mi letra)
+  ghostAlpha: 0.3,
 };
 function loadSettings() {
   const saved = LS.get('pyl.settings', {});
@@ -90,6 +94,7 @@ async function reloadGlyphs() {
   renderHandStatus();
   updateNotice();
   refreshWordmark(false);
+  refsApi?.refreshView();
 }
 
 /* ------------------------------------------------------------------ */
@@ -140,6 +145,7 @@ function buildChips(host, items, getVal, onPick) {
 
 function settingChanged(path) {
   saveSettings();
+  if (path === 'ghostAlpha') refsApi?.refreshGhost();
   if (path === 'animate' && !S.animate) writer.settle();
   if (LAYOUT_KEYS.has(path)) writer.relayout(); else writer.inkDirty = true;
   writer.schedule();
@@ -156,6 +162,7 @@ const FORMAT = {
   wordSpacing: (v) => `${fmt(v)} mm`,
   imperfection: pct,
   speed: (v) => `×${fmt(v)}`,
+  ghostAlpha: pct,
   'paper.lineSpacing': (v) => `${fmt(v)} mm`,
   'paper.grain': pct,
 };
@@ -194,7 +201,7 @@ function syncControls() {
     if (el._out) el._out.textContent = (FORMAT[el.dataset.s] || String)(parseFloat(el.value));
     if (el.type === 'range') paintRange(el);
   });
-  ['#inst-chips', '#paper-chips', '#overflow-chips', '#source-chips', '#ink-swatches', '#paper-swatches', '#line-swatches'].forEach((id) => $(id)._refresh?.());
+  ['#inst-chips', '#paper-chips', '#overflow-chips', '#refmode-chips', '#reffont-chips', '#source-chips', '#ink-swatches', '#paper-swatches', '#line-swatches'].forEach((id) => $(id)._refresh?.());
 }
 
 function setupResets() {
@@ -227,6 +234,8 @@ function buildControls() {
   buildSwatches($('#paper-swatches'), PAPER_COLORS, () => S.paper.color, (c) => { S.paper.color = c; settingChanged('paper.color'); });
   buildSwatches($('#line-swatches'), LINE_COLORS, () => S.paper.lineColor, (c) => { S.paper.lineColor = c; settingChanged('paper.lineColor'); });
   buildChips($('#overflow-chips'), [['back', 'En el dorso'], ['new', 'En otra hoja']], () => S.overflow, (k) => { S.overflow = k; settingChanged('overflow'); });
+  buildChips($('#refmode-chips'), [['panel', 'Al costado'], ['float', 'Ventana flotante'], ['ghost', 'Fantasma en la hoja']], () => S.refMode, (k) => { S.refMode = k; saveSettings(); refsApi?.placeRef(); refsApi?.refreshGhost(); });
+  buildChips($('#reffont-chips'), [['legible', 'Legible'], ['hand', 'Mi letra']], () => S.refFont, (k) => { S.refFont = k; saveSettings(); refsApi?.refreshView(); });
   buildChips($('#source-chips'), [['auto', 'Automática'], ['mine', 'Mi letra'], ['demo', 'Ejemplo']], () => S.source, (k) => {
     S.source = k; applySource(); clearSpriteCache(); renderHandStatus(); settingChanged('source'); writer.relayout();
   });
@@ -363,15 +372,18 @@ function setupInput() {
 /* Cajones (celular) y vistas                                          */
 /* ------------------------------------------------------------------ */
 // ventanas de la barra: una sola abierta a la vez (ajustes en #pop, nota en su cajón)
-let openPanel = null;
-function setPanel(name) {
+// Izquierda: ajustes (en #pop) o el archivero (#cab), uno a la vez. Derecha: la referencia (nota o carta), que puede convivir.
+let openPanel = null, noteOpen = false;
+function markDock() {
+  $$('.dock-btn[data-panel]').forEach((b) => {
+    const on = b.dataset.panel === 'note' ? noteOpen : b.dataset.panel === openPanel;
+    b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+  });
+}
+function setLeft(name) {
   openPanel = name;
-  const isNote = name === 'note';
-  const pop = $('#pop'), note = $('#note');
-  $$('.dock-btn[data-panel]').forEach((b) => { const on = b.dataset.panel === name; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
-  note.classList.toggle('open', isNote);
-  $('#view-write').classList.toggle('note-open', isNote);
-  const sec = name && !isNote ? $(`.sec[data-sec="${name}"]`, pop) : null;
+  const pop = $('#pop'), cab = $('#cab');
+  const sec = name && name !== 'cab' ? $(`.sec[data-sec="${name}"]`, pop) : null;
   $$('.sec', pop).forEach((s) => { s.classList.toggle('act', s === sec); s.classList.remove('go'); });
   if (sec) {
     [...sec.children].forEach((c, i) => c.style.setProperty('--i', i));
@@ -379,10 +391,22 @@ function setPanel(name) {
   }
   pop.classList.toggle('open', !!sec);
   pop.setAttribute('aria-label', sec ? sec.querySelector('h2').textContent : 'Ajustes');
-  if (name && isMobile()) $('#cap').blur();
+  cab.classList.toggle('open', name === 'cab');
+  if (name !== 'cab') refsApi?.closePeek();
+  if (name && isMobile()) { $('#cap').blur(); setNote(false); }
+  markDock();
 }
-const closeDrawers = () => setPanel(null);
-const toggleDrawer = (name) => setPanel(openPanel === name ? null : name);
+function setNote(open) {
+  noteOpen = open;
+  refsApi?.showNote(open);
+  if (open && isMobile()) { setLeft(null); $('#cap').blur(); }
+  markDock();
+}
+function togglePanel(name) {
+  if (name === 'note') setNote(!noteOpen); else setLeft(openPanel === name ? null : name);
+}
+const closeDrawers = () => { setLeft(null); setNote(false); };
+let refsApi = null;
 
 /* ------------------------------------------------------------------ */
 /* Hojas: dar vuelta, tomar otra, cambiar de cara                      */
@@ -898,7 +922,7 @@ function setupTheme() {
   const sync = () => document.body.classList.toggle('anim-on', THEME.anim && THEME.ripple !== false && !reduceMotion());
   applyTheme(THEME); sync();
   BG = new Background($('#dots'));
-  setupLook(THEME, () => { sync(); BG.draw(); refreshWordmark(false); });
+  setupLook(THEME, () => { sync(); BG.draw(); refreshWordmark(false); refsApi?.refreshView(); });
 }
 
 async function init() {
@@ -921,6 +945,11 @@ async function init() {
   renderHandStatus();
 
   setupNewLetter();
+  refsApi = setupRefs({
+    S: () => S, saveSettings, writer: () => writer, lib, toast, ask, isMobile, LS,
+    isNoteOpen: () => noteOpen, openNote: () => setNote(true), closeNote: () => setNote(false), syncControls,
+    download: (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); },
+  });
   $('#pg-prev').addEventListener('click', () => goPage(writer.page - 1));
   $('#pg-next').addEventListener('click', () => goPage(writer.page + 1));
   setupSheetOps();
@@ -930,8 +959,13 @@ async function init() {
   fitLabel();
   $('#z-fit').addEventListener('click', () => { fitMode = fitMode === 'page' ? 'width' : 'page'; LS.set('pyl.fit', fitMode); zoom = 1; fitLabel(); fit(); $('#scroller').scrollTo({ top: 0 }); });
   $$('.tab').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
-  $$('.dock-btn[data-panel]').forEach((b) => b.addEventListener('click', () => toggleDrawer(b.dataset.panel)));
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openPanel && !document.querySelector('dialog[open]')) { const b = $(`.dock-btn[data-panel="${openPanel}"]`); closeDrawers(); b?.focus(); } });
+  $$('.dock-btn[data-panel]').forEach((b) => b.addEventListener('click', () => togglePanel(b.dataset.panel)));
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || document.querySelector('dialog[open]')) return;
+    if (refsApi?.peekOpen()) return; // la vista de cerca maneja su propio Esc
+    if (openPanel) { const b = $(`.dock-btn[data-panel="${openPanel}"]`); setLeft(null); b?.focus(); }
+    else if (noteOpen) { setNote(false); $('.dock-btn[data-panel="note"]')?.focus(); }
+  });
 
   const draft = LS.get('pyl.draft', { text: '' });
   writer.setText(draft.text || '');

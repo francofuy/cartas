@@ -7,7 +7,7 @@ let dbp = null;
 function open() {
   if (dbp) return dbp;
   dbp = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
+    const req = indexedDB.open(DB_NAME, 2);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains('glyphs')) {
@@ -15,6 +15,8 @@ function open() {
         s.createIndex('char', 'char');
         s.createIndex('source', 'source');
       }
+      // cartas de referencia (archivero)
+      if (!db.objectStoreNames.contains('refs')) db.createObjectStore('refs', { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -96,4 +98,30 @@ export async function importHand(file, { replace = false } = {}) {
   const list = data.glyphs.map((g) => ({ char: g.char, w: g.w, h: g.h, pxmm: g.pxmm, base: g.base, source: g.source || 'import', page: g.page ?? -1, alpha: base64ToBytes(g.a) }));
   await addGlyphs(list);
   return list.length;
+}
+
+/* ---------- cartas de referencia (archivero) ---------- */
+export async function allRefs() {
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const r = db.transaction('refs').objectStore('refs').getAll();
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+}
+export async function putRef(ref) { await tx('refs', 'readwrite', (s) => { s.put(ref); }); }
+export async function deleteRef(id) { await tx('refs', 'readwrite', (s) => { s.delete(id); }); }
+export async function clearRefs() { await tx('refs', 'readwrite', (s) => { s.clear(); }); }
+
+export async function exportRefs() {
+  const data = { app: 'puno-y-letra', kind: 'refs', version: 1, exportedAt: new Date().toISOString(), refs: await allRefs() };
+  return new Blob([await gzip(new TextEncoder().encode(JSON.stringify(data)))], { type: 'application/octet-stream' });
+}
+// Devuelve cuántas cartas se sumaron (las que ya existen con el mismo id se reemplazan)
+export async function importRefs(file) {
+  const raw = new Uint8Array(await file.arrayBuffer());
+  const data = JSON.parse(new TextDecoder().decode(await gunzip(raw)));
+  if (data.app !== 'puno-y-letra' || data.kind !== 'refs' || !Array.isArray(data.refs)) throw new Error('El archivo no parece ser un archivero de Puño y Letra.');
+  await tx('refs', 'readwrite', (s) => { for (const r of data.refs) if (r && r.id && typeof r.text === 'string') s.put(r); });
+  return data.refs.length;
 }

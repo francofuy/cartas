@@ -18,6 +18,9 @@ const P = {
   note: '<path d="M5 4h14v12l-4 4H5zM15 20v-4h4M8.5 9h7M8.5 12.5h4"/>',
   flip: '<path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18.5 3v4h-4M5.5 21v-4h4"/>',
   sheetPlus: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M12.5 12v6M9.5 15h6"/>',
+  download: '<path d="M12 4v10M8 10.5l4 4 4-4M5 19h14"/>',
+  upload: '<path d="M12 15V5M8 8.5l4-4 4 4M5 19h14"/>',
+  search: '<circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/>',
   cabinet: '<path d="M4 4h16v16H4zM4 12h16M10 8h4M10 16h4"/>',
 };
 export function icon(name, size) {

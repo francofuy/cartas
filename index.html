@@ -11,6 +11,7 @@
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/archivero.css">
 </head>
 <body data-view="write">
 <a class="skip" href="#cap" id="skip-sheet">Saltar a la hoja</a>
@@ -57,7 +58,8 @@
         <button class="dock-btn" data-panel="hand" aria-label="Letra" title="Letra"><span data-icon="hand" class="ico"></span><span class="t">Letra</span></button>
         <button class="dock-btn" data-panel="look" aria-label="Aspecto" title="Aspecto"><span data-icon="palette" class="ico"></span><span class="t">Aspecto</span></button>
         <span class="dock-sep" aria-hidden="true"></span>
-        <button class="dock-btn" data-panel="note" aria-label="Nota de referencia" title="Nota de referencia"><span data-icon="note" class="ico"></span><span class="t">Nota</span></button>
+        <button class="dock-btn" data-panel="cab" aria-label="Archivero de cartas" title="Archivero de cartas"><span data-icon="cabinet" class="ico"></span><span class="t">Cartas</span></button>
+        <button class="dock-btn" data-panel="note" aria-label="Nota o carta de referencia" title="Nota o carta de referencia"><span data-icon="note" class="ico"></span><span class="t">Nota</span></button>
       </nav>
 
       <!-- ventana de ajustes (una sección a la vez) -->
@@ -83,6 +85,14 @@
           <p class="hint" id="motion-hint" hidden>Tu sistema pide reducir el movimiento, así que la animación empieza desactivada.</p>
           <label class="field range"><span class="lbl">Velocidad</span><input type="range" data-s="speed" min="0.5" max="2.5" step="0.1"></label>
           <button type="button" class="link-btn" data-reset="writing">Restablecer escritura</button>
+          <h3 class="sub">Referencia</h3>
+          <div class="field"><span class="lbl" id="lbl-rmode">Dónde se ve</span>
+            <div class="chips" id="refmode-chips" role="group" aria-labelledby="lbl-rmode"></div>
+          </div>
+          <div class="field"><span class="lbl" id="lbl-rfont">Con qué letra</span>
+            <div class="chips" id="reffont-chips" role="group" aria-labelledby="lbl-rfont"></div>
+          </div>
+          <label class="field range"><span class="lbl">Intensidad del fantasma</span><input type="range" data-s="ghostAlpha" min="0.1" max="0.6" step="0.02"></label>
         </section>
 
         <section class="sec" data-sec="paper">
@@ -164,18 +174,58 @@
         </div>
       </div>
 
-      <!-- nota de referencia: cajón a la derecha -->
-      <aside id="note" class="note gp" aria-label="Nota de referencia">
-        <div class="note-head">
-          <h2>Nota de referencia</h2>
-          <div class="note-tools">
-            <button class="icon-btn sm" id="note-smaller" aria-label="Letra más chica" data-icon="textMinus"></button>
-            <button class="icon-btn sm" id="note-bigger" aria-label="Letra más grande" data-icon="textPlus"></button>
-            <button class="btn sm" id="note-clear">Limpiar</button>
+      <!-- archivero: muebles con cartas de referencia -->
+      <aside id="cab" class="pop cab gp" aria-label="Archivero de cartas">
+        <header class="cab-head">
+          <h2>Archivero</h2>
+          <div class="cab-tools">
+            <button class="icon-btn sm" id="cab-export" aria-label="Exportar el archivero" title="Exportar el archivero" data-icon="download"></button>
+            <label class="icon-btn sm file" title="Importar un archivero" aria-label="Importar un archivero"><span data-icon="upload" class="ico"></span><input type="file" id="cab-import" accept=".gz,.json,application/gzip,application/octet-stream" hidden></label>
+            <button class="btn sm primary" id="cab-add">Nueva carta</button>
+          </div>
+        </header>
+        <label class="cab-search"><span class="sr-only">Buscar en las cartas</span><span data-icon="search" class="ico" aria-hidden="true"></span><input type="search" id="cab-q" placeholder="Buscar en las cartas…" autocomplete="off"></label>
+        <p class="cab-count muted" id="cab-count" aria-live="polite"></p>
+        <div class="cab-scroll" id="cab-scroll"><div class="cabinet" id="cabinet"></div></div>
+        <p class="hint cab-hint">Tocá una carta para verla de cerca. Arrastrala hasta la referencia para usarla.</p>
+        <div class="peek" id="peek" hidden role="dialog" aria-modal="false" aria-labelledby="peek-title">
+          <article class="peek-sheet" id="peek-sheet">
+            <button class="icon-btn sm peek-x" id="peek-close" aria-label="Cerrar la vista de cerca" data-icon="close"></button>
+            <h3 id="peek-title"></h3>
+            <p class="peek-folder muted" id="peek-folder"></p>
+            <div class="peek-text" id="peek-text" tabindex="0"></div>
+          </article>
+          <div class="peek-actions">
+            <button class="btn primary" id="peek-use">Usar como referencia</button>
+            <button class="btn" id="peek-edit">Editar</button>
+            <button class="btn danger" id="peek-del">Borrar</button>
           </div>
         </div>
-        <textarea id="note-text" spellcheck="false" aria-label="Nota de referencia" placeholder="Pegá o escribí acá la carta que querés copiar a mano. No sale en la hoja: es solo para mirar."></textarea>
       </aside>
+
+      <!-- referencia: cajón a la derecha (nota libre o carta del archivero) -->
+      <aside id="note" class="note gp" aria-label="Referencia">
+        <div id="refc" class="refc">
+          <div class="note-head">
+            <h2 id="ref-title">Nota de referencia</h2>
+            <div class="note-tools">
+              <button class="icon-btn sm wide" id="ref-font" hidden aria-label="Mostrar con mi letra" title="Cambiar la letra de la referencia">Mi letra</button>
+              <button class="icon-btn sm" id="note-smaller" aria-label="Letra más chica" data-icon="textMinus"></button>
+              <button class="icon-btn sm" id="note-bigger" aria-label="Letra más grande" data-icon="textPlus"></button>
+              <button class="btn sm" id="note-clear">Limpiar</button>
+              <button class="btn sm" id="ref-drop" hidden>Soltar carta</button>
+            </div>
+          </div>
+          <textarea id="note-text" spellcheck="false" aria-label="Nota de referencia" placeholder="Pegá o escribí acá la carta que querés copiar a mano. No sale en la hoja: es solo para mirar."></textarea>
+          <div id="ref-view" class="ref-view" hidden></div>
+        </div>
+      </aside>
+
+      <!-- referencia flotante -->
+      <div id="refwin" class="refwin gp" hidden role="group" aria-label="Referencia flotante">
+        <div class="refwin-bar" id="refwin-bar"><span class="grip" aria-hidden="true"></span><span>Referencia</span><button class="icon-btn sm" id="refwin-close" aria-label="Cerrar la referencia flotante" data-icon="close"></button></div>
+        <div class="refwin-body" id="refwin-body"></div>
+      </div>
     </section>
 
     <!-- ===================== MI LETRA ===================== -->
@@ -254,6 +304,22 @@
     <div class="row"><input type="text" id="ver-name" placeholder="Nombre (opcional)" aria-label="Nombre de la versión"><button class="btn primary" id="ver-save" type="button">Guardar versión</button></div>
     <ul class="ver-list" id="ver-list"></ul>
     <div class="row end"><button class="btn" value="close">Cerrar</button></div>
+  </form>
+</dialog>
+
+<!-- carta del archivero -->
+<dialog id="refdlg" class="gp" aria-labelledby="refdlg-title">
+  <form method="dialog" class="dlg" id="refform">
+    <h3 id="refdlg-title">Nueva carta</h3>
+    <label class="fld">Título<input type="text" id="ref-t" maxlength="80" placeholder="Por ejemplo: Carta de cumpleaños"></label>
+    <div class="row wrap">
+      <label class="fld grow">Cajón<input type="text" id="ref-f" maxlength="40" list="ref-folders" placeholder="Sueltas"></label>
+      <datalist id="ref-folders"></datalist>
+      <div class="fld"><span class="lbl" id="lbl-rc">Color de la hoja</span><div class="swatches" id="ref-colors" role="group" aria-labelledby="lbl-rc"></div></div>
+    </div>
+    <label class="fld">Texto<textarea id="ref-x" rows="9" spellcheck="false" placeholder="Pegá o escribí la carta de referencia."></textarea></label>
+    <div class="row wrap"><button type="button" class="link-btn" id="ref-fromsheet">Traer el texto de la hoja</button></div>
+    <div class="row end"><button class="btn" value="cancel">Cancelar</button><button class="btn primary" id="ref-save" value="save">Guardar</button></div>
   </form>
 </dialog>
 

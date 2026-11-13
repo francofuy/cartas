@@ -32,6 +32,9 @@ export class Writer {
     this.onChange = null;   // (info) => void
     this.onStroke = null;   // (char, durSeconds) => void  (para el sonido)
     this.onErase = null;
+    this.ghostText = null;  // texto de referencia que se ve tenue sobre la hoja
+    this.ghostLayout = null;
+    this.ghostAlpha = 0.3;
     setInterval(() => { if (this.focused) { this.blinkOn = !this.blinkOn; this.schedule(); } }, 540);
   }
 
@@ -76,6 +79,27 @@ export class Writer {
     this.page = clamp(this.page, 0, this.layout.pages - 1);
     this.inkDirty = true;
     this.cachePageItems();
+    this.ghostLayout = this.ghostText ? layoutText(this.ghostText, this.lib, this.S) : null;
+  }
+
+  // modo fantasma: la referencia se dibuja tenue en el mismo lugar donde saldrá cada letra (misma semilla = mismas formas)
+  setGhost(text, alpha = this.ghostAlpha) {
+    this.ghostText = text ? text.replace(/[\f\v]/g, '') : null;
+    this.ghostAlpha = alpha;
+    this.ghostLayout = this.ghostText ? layoutText(this.ghostText, this.lib, this.S) : null;
+    this.inkDirty = true;
+    this.schedule();
+  }
+
+  drawGhost(ctx) {
+    const G = this.ghostLayout;
+    if (!G) return;
+    const typed = this.text.replace(/[\f\v]/g, '').length;
+    const style = { inst: 'pencil', color: '#6d7691', thickness: 0.05, pressure: 0.45 };
+    for (const it of G.items) {
+      if (!it || it.page !== this.page || it.k < typed) continue;
+      this.drawItem(ctx, it, this.ppm, getSprite(it.g, style), this.ghostAlpha);
+    }
   }
 
   cachePageItems() {
@@ -126,6 +150,7 @@ export class Writer {
     this.relayout();
     const c = this.layout.caret[this.caret];
     if (c) { this.page = c.page; this.cachePageItems(); }
+    if (this.ghostLayout) this.inkDirty = true;
     this.blinkOn = true;
     this.emit();
     this.schedule();
@@ -199,6 +224,7 @@ export class Writer {
     const ctx = this.inkCtx;
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
     drawPaper(ctx, this.ppm, this.S.paper);
+    this.drawGhost(ctx);
     for (const tm of this.times) if (tm) tm.drawn = tm.ws ? true : false;
     for (const it of this.pageItems) {
       const tm = this.times[it.k];
