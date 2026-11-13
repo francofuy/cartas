@@ -1,0 +1,48 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Simulador de foto de plantilla (solo desarrollo)</title>
+<style>
+  html,body{margin:0;background:#5b4636;height:100%;overflow:hidden}
+  #table{position:absolute;inset:0;background:
+     radial-gradient(900px 700px at 30% 20%, #7a5c44, #4a3729);}
+  #pose{position:absolute;left:50%;top:50%;transform-origin:center;}
+  #light{position:absolute;inset:0;pointer-events:none;mix-blend-mode:multiply}
+</style>
+<div id="table"><div id="pose"></div><div id="light"></div></div>
+<script type="module">
+import { templatePageEl, pageCells, GRID } from '../js/template.js';
+import { loadDemoFont } from '../js/glyphs.js';
+const q = new URLSearchParams(location.search);
+const p = +(q.get('p') || 0);
+const rot = +(q.get('rot') || 4), tilt = +(q.get('tilt') || 14), rz = +(q.get('rz') || 0);
+const seed = +(q.get('seed') || 1);
+const ink = q.get('ink') || '#1b2a7d';
+await loadDemoFont('../');
+let s = seed * 9301 + 49297;
+const rnd = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+
+const page = templatePageEl(p);
+const PX = 12;
+const cv = document.createElement('canvas');
+cv.width = 210 * PX; cv.height = 297 * PX;
+cv.style.cssText = 'position:absolute;left:0;top:0;width:210mm;height:297mm';
+const ctx = cv.getContext('2d');
+for (const c of pageCells(p)) {
+  ctx.save();
+  const jx = (rnd() - .5) * 3, jy = (rnd() - .5) * 1.2;
+  ctx.translate((c.x + c.w * (0.3 + rnd() * 0.2) + jx) * PX, (c.baseY + jy) * PX);
+  ctx.rotate((rnd() - .5) * 0.12);
+  ctx.scale(0.92 + rnd() * 0.2, 0.92 + rnd() * 0.2);
+  ctx.font = `500 ${96 + rnd() * 10}px CaveatDemo, cursive`;
+  ctx.fillStyle = ink; ctx.globalAlpha = 0.88 + rnd() * 0.12;
+  ctx.fillText(c.char, 0, 0);
+  ctx.restore();
+}
+page.append(cv);
+const pose = document.getElementById('pose');
+pose.style.cssText = `transform: translate(-50%,-50%) perspective(1700px) rotateX(${tilt}deg) rotateZ(${rz}deg) rotateY(${rot}deg) scale(1.0); filter: blur(.35px);`;
+pose.append(page);
+// luz despareja
+document.getElementById('light').style.background = 'linear-gradient(115deg, #ffffff 10%, #cfc7bd 100%)';
+window.__ready = true;
+</script>
