@@ -22,6 +22,11 @@ export function layoutText(text, lib, S) {
   const lines = []; // lines[l] = [índices]
   const lastVar = new Map();
   let line = 0, x = G.left;
+  // cada cara nueva nace por desborde ('auto'), por «dar vuelta» (\v → 'flip') o por «hoja nueva» (\f → 'new')
+  const faceKind = [];
+  const advance = () => { line++; if (line % G.rows === 0) faceKind[line / G.rows] = 'auto'; };
+  const forceFace = (kind) => { const f = Math.floor(line / G.rows) + 1; line = f * G.rows; faceKind[f] = kind; };
+  const isSep = (c) => c === ' ' || c === '\n' || c === '\t' || c === '\f' || c === '\v';
 
   const lineBase = (ln) => {
     const row = ln % G.rows;
@@ -40,7 +45,12 @@ export function layoutText(text, lib, S) {
     const ch = text[i];
     if (ch === '\n') {
       setCaret(i, x, x, line);
-      line++; x = G.left; i++;
+      advance(); x = G.left; i++;
+      continue;
+    }
+    if (ch === '\f' || ch === '\v') {
+      setCaret(i, x, x, line);
+      forceFace(ch === '\v' ? 'flip' : 'new'); x = G.left; i++;
       continue;
     }
     if (ch === ' ' || ch === '\t') {
@@ -51,7 +61,7 @@ export function layoutText(text, lib, S) {
     }
     // palabra
     let j = i;
-    while (j < n && text[j] !== ' ' && text[j] !== '\n' && text[j] !== '\t') j++;
+    while (j < n && !isSep(text[j])) j++;
     const ents = [];
     let wlen = 0;
     for (let k = i; k < j; k++) {
@@ -68,10 +78,10 @@ export function layoutText(text, lib, S) {
       ents.push({ k, g, mm, w: g.w * mm, adv: g.w * mm + Math.max(-0.4, gap) });
       wlen += ents[ents.length - 1].adv;
     }
-    if (x + wlen > G.right && x > G.left + 0.01) { line++; x = G.left; }
+    if (x + wlen > G.right && x > G.left + 0.01) { advance(); x = G.left; }
     const wordOff = (hash(seed, i, 3) - 0.5) * 0.55 * imp;
     for (const e of ents) {
-      if (x + e.w > G.right && x > G.left + 0.01) { line++; x = G.left; }
+      if (x + e.w > G.right && x > G.left + 0.01) { advance(); x = G.left; }
       const lp = lineP(line);
       const yy = lineBase(line) + lp.off + lp.tilt * (x - G.left) + wordOff + (hash(seed, e.k, 4) - 0.5) * 0.5 * imp;
       items[e.k] = {
@@ -89,7 +99,16 @@ export function layoutText(text, lib, S) {
   caret[n] = { x, xr: x, y: lineBase(line), line, page: Math.floor(line / G.rows) };
   addLine(line, n);
   const pages = Math.floor(line / G.rows) + 1;
-  return { items, caret, lines, pages, G, endLine: line };
+  // caras (lo que se ve y se imprime) agrupadas en hojas físicas: frente y, si hay, dorso
+  const faces = [], sheets = [];
+  for (let f = 0; f < pages; f++) {
+    const kind = f === 0 ? 'new' : faceKind[f] || 'auto';
+    const prev = faces[f - 1];
+    const asBack = f > 0 && prev.side === 'front' && (kind === 'flip' || (kind === 'auto' && S.overflow !== 'new'));
+    if (asBack) { faces.push({ sheet: prev.sheet, side: 'back' }); sheets[prev.sheet].back = f; }
+    else { sheets.push({ front: f, back: null }); faces.push({ sheet: sheets.length - 1, side: 'front' }); }
+  }
+  return { items, caret, lines, pages, G, endLine: line, faces, sheets };
 }
 
 // índice de texto más cercano a un punto (en mm) de una hoja

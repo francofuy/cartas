@@ -33,6 +33,8 @@ const DEFAULTS = {
   // si el sistema pide reducir el movimiento, la escritura animada arranca apagada
   animate: !reduceMotion(), speed: 1, source: 'auto', seed: 1 + Math.floor(Math.random() * 1e6),
   noteSize: 17,
+  overflow: 'back',      // al llenarse una cara: 'back' = sigue en el dorso, 'new' = otra hoja
+  printMode: 'duplex',   // 'duplex' | 'single' | 'manual'
 };
 function loadSettings() {
   const saved = LS.get('pyl.settings', {});
@@ -43,7 +45,7 @@ const saveSettings = debounce(() => LS.set('pyl.settings', S), 250);
 
 const getPath = (o, p) => p.split('.').reduce((a, k) => (a == null ? a : a[k]), o);
 const setPath = (o, p, v) => { const ks = p.split('.'); const l = ks.pop(); ks.reduce((a, k) => a[k], o)[l] = v; };
-const LAYOUT_KEYS = new Set(['size', 'letterSpacing', 'wordSpacing', 'imperfection', 'paper.lineSpacing', 'paper.margin', 'paper.marginX', 'paper.type', 'animate']);
+const LAYOUT_KEYS = new Set(['size', 'letterSpacing', 'wordSpacing', 'imperfection', 'paper.lineSpacing', 'paper.margin', 'paper.marginX', 'paper.type', 'animate', 'overflow']);
 
 /* ------------------------------------------------------------------ */
 /* Estado                                                              */
@@ -192,7 +194,7 @@ function syncControls() {
     if (el._out) el._out.textContent = (FORMAT[el.dataset.s] || String)(parseFloat(el.value));
     if (el.type === 'range') paintRange(el);
   });
-  ['#inst-chips', '#paper-chips', '#source-chips', '#ink-swatches', '#paper-swatches', '#line-swatches'].forEach((id) => $(id)._refresh?.());
+  ['#inst-chips', '#paper-chips', '#overflow-chips', '#source-chips', '#ink-swatches', '#paper-swatches', '#line-swatches'].forEach((id) => $(id)._refresh?.());
 }
 
 function setupResets() {
@@ -224,6 +226,7 @@ function buildControls() {
   });
   buildSwatches($('#paper-swatches'), PAPER_COLORS, () => S.paper.color, (c) => { S.paper.color = c; settingChanged('paper.color'); });
   buildSwatches($('#line-swatches'), LINE_COLORS, () => S.paper.lineColor, (c) => { S.paper.lineColor = c; settingChanged('paper.lineColor'); });
+  buildChips($('#overflow-chips'), [['back', 'En el dorso'], ['new', 'En otra hoja']], () => S.overflow, (k) => { S.overflow = k; settingChanged('overflow'); });
   buildChips($('#source-chips'), [['auto', 'Automática'], ['mine', 'Mi letra'], ['demo', 'Ejemplo']], () => S.source, (k) => {
     S.source = k; applySource(); clearSpriteCache(); renderHandStatus(); settingChanged('source'); writer.relayout();
   });
@@ -269,9 +272,19 @@ function fit() {
   if (Math.abs(w - writer.cssW) > 1) writer.resize(w);
 }
 
+function faceLabel(info) {
+  const f = info.faces[info.page], n = info.sheets.length;
+  const hasBack = info.sheets[f.sheet].back != null;
+  const side = f.side === 'back' ? 'dorso' : hasBack ? 'frente' : '';
+  return { long: `Hoja ${f.sheet + 1} de ${n}${side ? ' · ' + side : ''}`, short: `${f.sheet + 1}/${n}${side ? ' ' + side : ''}`, f, hasBack };
+}
 function updatePager(info) {
-  $('#pg-label').innerHTML = `<span class="long">Hoja ${info.page + 1} de ${info.pages}</span><span class="short" aria-hidden="true">${info.page + 1}/${info.pages}</span>`;
-  $('#pg-label').setAttribute('aria-label', `Hoja ${info.page + 1} de ${info.pages}`);
+  const lb = faceLabel(info);
+  $('#pg-label').innerHTML = `<span class="long">${lb.long}</span><span class="short" aria-hidden="true">${lb.short}</span>`;
+  $('#pg-label').setAttribute('aria-label', lb.long);
+  const flip = $('#btn-flip');
+  flip.querySelector('.lab').textContent = lb.f.side === 'back' ? 'Ver el frente' : lb.hasBack ? 'Ver el dorso' : 'Dar vuelta';
+  flip.setAttribute('aria-label', lb.f.side === 'back' ? 'Dar vuelta la hoja y ver el frente' : lb.hasBack ? 'Dar vuelta la hoja y ver el dorso' : 'Dar vuelta la hoja y escribir en el dorso');
   $('#pg-prev').disabled = info.page <= 0;
   $('#pg-next').disabled = info.page >= info.pages - 1;
   $('#empty-hint').hidden = info.text.length > 0;
@@ -371,6 +384,61 @@ function setPanel(name) {
 const closeDrawers = () => setPanel(null);
 const toggleDrawer = (name) => setPanel(openPanel === name ? null : name);
 
+/* ------------------------------------------------------------------ */
+/* Hojas: dar vuelta, tomar otra, cambiar de cara                      */
+/* ------------------------------------------------------------------ */
+const animOn = () => !!(THEME && THEME.anim) && !reduceMotion();
+
+// la hoja gira sobre su borde largo al pasar del frente al dorso; entre hojas desliza
+async function changeFace(kind, change) {
+  const wrap = $('.sheet-wrap');
+  if (!animOn() || !wrap.animate) { change(); return; }
+  const dx = kind === 'next' ? 28 : -28;
+  const out = kind === 'flip' ? [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(88deg)' }] : [{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: `translateX(${-dx}px)` }];
+  const inn = kind === 'flip' ? [{ transform: 'rotateY(-88deg)' }, { transform: 'rotateY(0deg)' }] : [{ opacity: 0, transform: `translateX(${dx}px)` }, { opacity: 1, transform: 'translateX(0)' }];
+  try {
+    await wrap.animate(out, { duration: kind === 'flip' ? 170 : 110, easing: 'ease-in' }).finished;
+    change();
+    await wrap.animate(inn, { duration: kind === 'flip' ? 230 : 170, easing: 'cubic-bezier(.23,1,.32,1)' }).finished;
+  } catch { change(); }
+}
+function goPage(p) {
+  const L = writer.layout;
+  p = clamp(p, 0, L.pages - 1);
+  if (p === writer.page) return;
+  const a = L.faces[writer.page], b = L.faces[p];
+  changeFace(a.sheet === b.sheet ? 'flip' : p > writer.page ? 'next' : 'prev', () => writer.setPage(p));
+}
+// dónde termina una cara: donde empieza la siguiente (o el final del texto)
+function faceEnd(f) {
+  const L = writer.layout, n = writer.text.length;
+  let k = 0;
+  while (k <= n && L.caret[k].page <= f) k++;
+  if (k > n) return n;
+  return /[\f\v]/.test(writer.text[k - 1] || '') ? k - 1 : k; // si la corta una marca, se inserta antes de ella
+}
+function insertMarker(ch, at) {
+  writer.edit(at, 0, ch, at + 1);
+  writer._syncCap(); persistDraft();
+  if (!isMobile()) $('#cap').focus({ preventScroll: true });
+}
+function setupSheetOps() {
+  $('#btn-flip').addEventListener('click', () => {
+    const L = writer.layout, f = L.faces[writer.page], sh = L.sheets[f.sheet];
+    if (f.side === 'back') { goPage(sh.front); return; }
+    if (sh.back != null) { goPage(sh.back); return; }
+    changeFace('flip', () => insertMarker('\v', faceEnd(writer.page)));
+  });
+  $('#btn-sheet').addEventListener('click', () => {
+    const L = writer.layout, f = L.faces[writer.page], i = f.sheet;
+    if (L.sheets[i + 1]) { goPage(L.sheets[i + 1].front); return; }
+    const last = L.pages - 1, n = writer.text.length;
+    let a = 0; while (a <= n && L.caret[a].page < last) a++;
+    if (!writer.text.slice(a).replace(/[\f\v\s]/g, '')) { toast('Esta hoja todavía está vacía: escribí algo antes de tomar otra.'); return; }
+    changeFace('next', () => insertMarker('\f', n));
+  });
+}
+
 let viewReady = false;
 function setView(v) {
   const changed = document.body.dataset.view !== v;
@@ -467,23 +535,66 @@ function setupVersions() {
 /* ------------------------------------------------------------------ */
 /* Imprimir                                                            */
 /* ------------------------------------------------------------------ */
+/* trabajos de impresión según el modo (cada trabajo = lista de caras; null = hoja en blanco) */
+function printJobs(mode) {
+  const L = writer.layout, sh = L.sheets;
+  const hasBack = sh.some((x) => x.back != null);
+  if (!hasBack || mode === 'single') return [[...Array(L.pages).keys()]];
+  if (mode === 'manual') return [sh.map((x) => x.front), sh.slice().reverse().map((x) => (x.back != null ? x.back : null))];
+  // automática: frente y dorso en pares; una hoja sin dorso lleva el dorso en blanco si después viene otra con dorso
+  let lastBack = -1; sh.forEach((x, i) => { if (x.back != null) lastBack = i; });
+  return [sh.flatMap((x, i) => (x.back != null ? [x.front, x.back] : i < lastBack ? [x.front, null] : [x.front]))];
+}
+
 function setupPrint() {
+  const dlg = $('#printdlg');
+  let step = 1;
+  const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
+  const refresh = () => {
+    const L = writer.layout, nS = L.sheets.length, nB = L.sheets.filter((x) => x.back != null).length;
+    const hasBack = nB > 0;
+    $('#print-modes').hidden = !hasBack || step === 2;
+    $$('input[name="pmode"]').forEach((r) => { r.checked = r.value === S.printMode; });
+    const go = $('#print-go'), tip = $('#print-tip'), info = $('#print-info');
+    const real = 'En el cuadro de impresión elegí tamaño real (100 %), sin márgenes ni encabezados.';
+    if (!hasBack) {
+      info.textContent = `Se va a imprimir ${plural(nS, 'hoja A4', 'hojas A4')}, una cara cada una. ${real}`;
+      tip.textContent = ''; go.textContent = 'Imprimir carta';
+      return;
+    }
+    info.textContent = `Tu carta tiene ${plural(nS, 'hoja', 'hojas')}, ${nB === nS ? 'todas con dorso' : `${nB} con dorso y ${nS - nB} sin dorso`}. ${real}`;
+    if (S.printMode === 'duplex') {
+      tip.textContent = 'En el cuadro de impresión activá «Imprimir en ambas caras» y elegí «Voltear por el borde largo». Las hojas sin dorso salen con el dorso en blanco. El navegador no puede saber si tu impresora lo permite: si no aparece esa opción, volvé y elegí «Una cara por hoja».';
+      go.textContent = 'Imprimir carta';
+    } else if (S.printMode === 'single') {
+      tip.textContent = `Cada cara sale en su propia hoja: ${plural(L.pages, 'hoja', 'hojas')} en total.`;
+      go.textContent = 'Imprimir carta';
+    } else if (step === 1) {
+      tip.textContent = `Paso 1 de 2: se imprimen los frentes (${plural(nS, 'hoja', 'hojas')}). Dejá la impresión en una sola cara.`;
+      go.textContent = 'Imprimir los frentes';
+    } else {
+      info.textContent = 'Paso 2 de 2: los dorsos.';
+      tip.textContent = 'Tomá la pila tal como salió, dala vuelta como la página de un cuaderno (por el borde largo) y volvé a ponerla en la bandeja. Los dorsos salen en orden inverso para que cada uno caiga detrás de su frente.';
+      go.textContent = 'Imprimir los dorsos';
+    }
+  };
   const open = () => {
-    if (!writer.text.trim()) { toast('Escribí algo para poder imprimir.'); return; }
-    const n = writer.layout.pages;
-    $('#print-info').textContent = `Se van a imprimir ${n} hoja${n > 1 ? 's' : ''} A4. En el cuadro de impresión elegí tamaño real (100 %), sin márgenes ni encabezados.`;
-    $('#printdlg').showModal();
+    if (!writer.text.replace(/[\f\v\s]/g, '')) { toast('Escribí algo para poder imprimir.'); return; }
+    step = 1; refresh(); dlg.showModal();
   };
   $('#btn-print').addEventListener('click', open);
+  $$('input[name="pmode"]').forEach((r) => r.addEventListener('change', () => { S.printMode = r.value; saveSettings(); step = 1; refresh(); }));
   $('#print-go').addEventListener('click', async (e) => {
     e.preventDefault();
-    $('#printdlg').close();
+    dlg.close();
+    const jobs = printJobs(S.printMode);
+    const job = jobs[Math.min(step, jobs.length) - 1];
     busy('Preparando las hojas para imprimir…');
-    try {
-      const res = await printLetter(writer, [...Array(writer.layout.pages).keys()]);
-      if (res === 'blocked') toast('Este entorno no deja abrir la impresión. Abrí la app directamente en el navegador para imprimir.', 6500);
-    } catch (err) { console.error(err); toast('No pude preparar la impresión.'); }
+    let res = 'ok';
+    try { res = await printLetter(writer, job); } catch (err) { console.error(err); toast('No pude preparar la impresión.'); res = 'error'; }
     unbusy();
+    if (res === 'blocked') toast('Este entorno no deja abrir la impresión. Abrí la app directamente en el navegador para imprimir.', 6500);
+    if (res === 'ok' && S.printMode === 'manual' && jobs.length > 1 && step === 1) { step = 2; refresh(); dlg.showModal(); } else step = 1;
   });
 }
 
@@ -810,8 +921,9 @@ async function init() {
   renderHandStatus();
 
   setupNewLetter();
-  $('#pg-prev').addEventListener('click', () => writer.setPage(writer.page - 1));
-  $('#pg-next').addEventListener('click', () => writer.setPage(writer.page + 1));
+  $('#pg-prev').addEventListener('click', () => goPage(writer.page - 1));
+  $('#pg-next').addEventListener('click', () => goPage(writer.page + 1));
+  setupSheetOps();
   $('#z-in').addEventListener('click', () => { zoom = clamp(zoom * 1.2, 0.6, 3.2); fit(); });
   $('#z-out').addEventListener('click', () => { zoom = clamp(zoom / 1.2, 0.6, 3.2); fit(); });
   const fitLabel = () => { $('#z-fit').textContent = fitMode === 'page' ? 'Ancho completo' : 'Hoja entera'; $('#z-fit').setAttribute('aria-label', fitMode === 'page' ? 'Ver la hoja a todo el ancho' : 'Ver la hoja entera'); };
@@ -846,7 +958,7 @@ async function init() {
   viewReady = true;
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => refreshWordmark(false));
 
-  window.__pyl = { writer, lib, get S() { return S; }, reloadGlyphs, setView };
+  window.__pyl = { writer, lib, get S() { return S; }, reloadGlyphs, setView, printJobs };
 
   if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !location.hostname.includes('localhost')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

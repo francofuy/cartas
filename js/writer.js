@@ -84,7 +84,8 @@ export class Writer {
   }
 
   emit() {
-    this.onChange?.({ pages: this.layout.pages, page: this.page, text: this.text, missing: [...this.lib.usedFallback] });
+    const L = this.layout;
+    this.onChange?.({ pages: L.pages, page: this.page, text: this.text, missing: [...this.lib.usedFallback], faces: L.faces, sheets: L.sheets });
   }
 
   setPage(p) {
@@ -141,9 +142,9 @@ export class Writer {
       const backlog = tcur - t;
       const hurry = (1 + Math.max(0, backlog - 0.4) * 3.4) * spd;
       const r = Math.random();
-      if (c === ' ' || c === '\n' || c === '\t') {
+      if (c === ' ' || c === '\n' || c === '\t' || c === '\f' || c === '\v') {
         out.push({ t0: tcur, dur: 0, drawn: true, ws: true });
-        tcur += (c === '\n' ? 0.2 : 0.045 + 0.07 * r) / hurry;
+        tcur += (c === '\f' || c === '\v' ? 0.35 : c === '\n' ? 0.2 : 0.045 + 0.07 * r) / hurry;
         continue;
       }
       const vs = this.lib.variants(normalizeChar(c));

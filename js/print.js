@@ -43,6 +43,12 @@ export async function printLetter(writer, pageIdxs) {
   const r = root();
   const urls = [];
   for (const p of pageIdxs) {
+    if (p == null) { // hoja en blanco: mantiene el orden cuando una hoja no tiene dorso
+      const blank = document.createElement('div');
+      blank.className = 'print-sheet';
+      r.append(blank);
+      continue;
+    }
     const c = document.createElement('canvas');
     writer.renderPageTo(c, p, PRINT_PPM);
     const blob = await new Promise((res) => c.toBlob(res, 'image/jpeg', 0.95));
