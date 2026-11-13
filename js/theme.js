@@ -155,7 +155,8 @@ export class Background {
     const GAP = 26;
     for (let y = GAP / 2; y < h; y += GAP) {
       for (let x = GAP / 2; x < w; x += GAP) {
-        const dd = Math.hypot(x - this.mx, y - this.my), k = Math.max(0, 1 - dd / 130);
+        // detrás del título y la barra superior los puntos quedan quietos
+        const dd = y < 64 ? 999 : Math.hypot(x - this.mx, y - this.my), k = Math.max(0, 1 - dd / 130);
         ctx.globalAlpha = 0.28 + 0.72 * k;
         ctx.fillStyle = k > 0.02 ? accent : mut;
         ctx.beginPath(); ctx.arc(x, y, 1.5 + 4 * k, 0, 6.283); ctx.fill();
