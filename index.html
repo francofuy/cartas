@@ -4,8 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#f3f0e8" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#131419" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#ccccff">
 <title>Puño y Letra</title>
 <meta name="description" content="Escribí cartas con tu propia letra, como si fueran a mano.">
 <link rel="manifest" href="manifest.webmanifest">
@@ -15,6 +14,15 @@
 </head>
 <body data-view="write">
 <a class="skip" href="#cap" id="skip-sheet">Saltar a la hoja</a>
+
+<!-- fondo: puntos que reaccionan, aurora y grano de papel -->
+<div id="bgfx" aria-hidden="true">
+  <i class="a1"></i><i class="a2"></i><i class="a3"></i>
+  <canvas id="dots"></canvas>
+  <div class="vig"></div>
+  <div class="grain"></div>
+</div>
+
 <div id="app">
 
   <header class="top">
@@ -23,34 +31,39 @@
       <canvas id="wordmark" aria-hidden="true"></canvas>
       <span class="sr-only">Puño y Letra</span>
     </div>
-    <nav class="tabs" aria-label="Secciones">
+    <nav class="seg g" id="seg" aria-label="Secciones">
+      <i class="pill" aria-hidden="true"></i>
       <button class="tab" data-view="write" aria-pressed="true">Escribir</button>
       <button class="tab" data-view="hand" aria-pressed="false">Mi letra</button>
     </nav>
     <div class="actions">
-      <button class="icon-btn" id="btn-versions" title="Versiones guardadas" aria-label="Versiones guardadas">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v5l3 2M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 4.5v3.3h3.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
+      <button class="round g" id="btn-versions" title="Versiones guardadas" aria-label="Versiones guardadas" data-icon="history"></button>
       <button class="btn primary" id="btn-print">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5a1 1 0 0 1-1 1h-2M7 14h10v6H7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-        <span>Imprimir carta</span>
+        <span data-icon="printer" class="ico"></span>
+        <span class="lab">Imprimir</span>
       </button>
     </div>
   </header>
 
   <main>
     <!-- ===================== ESCRIBIR ===================== -->
-    <section id="view-write" class="view write" data-side="note">
+    <section id="view-write" class="view write">
 
-      <aside id="rail" class="rail panel" aria-label="Ajustes de escritura">
-        <div class="drawer-grip" aria-hidden="true"></div>
-        <div class="side-switch" role="group" aria-label="Panel lateral">
-          <button type="button" data-side="note" aria-pressed="false">Nota</button>
-          <button type="button" data-side="rail" aria-pressed="true">Ajustes</button>
-        </div>
+      <!-- barra de herramientas (vertical a la izquierda; abajo en celular) -->
+      <nav class="dock g" id="dock" aria-label="Herramientas">
+        <button class="dock-btn" data-panel="pen" aria-label="Lapicera" title="Lapicera"><span data-icon="pen" class="ico"></span><span class="t">Lapicera</span></button>
+        <button class="dock-btn" data-panel="writing" aria-label="Escritura" title="Escritura"><span data-icon="aa" class="ico"></span><span class="t">Escritura</span></button>
+        <button class="dock-btn" data-panel="paper" aria-label="Papel" title="Papel"><span data-icon="paper" class="ico"></span><span class="t">Papel</span></button>
+        <button class="dock-btn" data-panel="hand" aria-label="Letra" title="Letra"><span data-icon="hand" class="ico"></span><span class="t">Letra</span></button>
+        <button class="dock-btn" data-panel="look" aria-label="Aspecto" title="Aspecto"><span data-icon="palette" class="ico"></span><span class="t">Aspecto</span></button>
+        <span class="dock-sep" aria-hidden="true"></span>
+        <button class="dock-btn" data-panel="note" aria-label="Nota de referencia" title="Nota de referencia"><span data-icon="note" class="ico"></span><span class="t">Nota</span></button>
+      </nav>
 
-        <details open>
-          <summary>Lapicera</summary>
+      <!-- ventana de ajustes (una sección a la vez) -->
+      <div id="pop" class="pop gp" role="region" aria-label="Ajustes">
+        <section class="sec" data-sec="pen">
+          <h2>Lapicera</h2>
           <div class="chips" id="inst-chips" role="group" aria-label="Instrumento"></div>
           <div class="field"><span class="lbl" id="lbl-ink">Color de tinta</span>
             <div class="swatches" id="ink-swatches" role="group" aria-labelledby="lbl-ink"></div>
@@ -58,10 +71,10 @@
           <label class="field range"><span class="lbl">Grosor</span><input type="range" data-s="thickness" min="-1" max="1" step="0.05"></label>
           <label class="field range"><span class="lbl">Presión</span><input type="range" data-s="pressure" min="0" max="1" step="0.05"></label>
           <button type="button" class="link-btn" data-reset="pen">Restablecer lapicera</button>
-        </details>
+        </section>
 
-        <details open>
-          <summary>Escritura</summary>
+        <section class="sec" data-sec="writing">
+          <h2>Escritura</h2>
           <label class="field range"><span class="lbl">Tamaño de la letra</span><input type="range" data-s="size" min="0.6" max="1.6" step="0.02"></label>
           <label class="field range"><span class="lbl">Espacio entre letras</span><input type="range" data-s="letterSpacing" min="-0.4" max="1.8" step="0.05"></label>
           <label class="field range"><span class="lbl">Espacio entre palabras</span><input type="range" data-s="wordSpacing" min="-1" max="5" step="0.1"></label>
@@ -70,10 +83,10 @@
           <p class="hint" id="motion-hint" hidden>Tu sistema pide reducir el movimiento, así que la animación empieza desactivada.</p>
           <label class="field range"><span class="lbl">Velocidad</span><input type="range" data-s="speed" min="0.5" max="2.5" step="0.1"></label>
           <button type="button" class="link-btn" data-reset="writing">Restablecer escritura</button>
-        </details>
+        </section>
 
-        <details>
-          <summary>Papel</summary>
+        <section class="sec" data-sec="paper">
+          <h2>Papel</h2>
           <div class="chips" id="paper-chips" role="group" aria-label="Tipo de hoja"></div>
           <div class="field"><span class="lbl" id="lbl-paper">Color del papel</span>
             <div class="swatches" id="paper-swatches" role="group" aria-labelledby="lbl-paper"></div>
@@ -84,30 +97,37 @@
           <label class="field range"><span class="lbl">Separación de renglones</span><input type="range" data-s="paper.lineSpacing" min="6" max="14" step="0.5"></label>
           <label class="field toggle"><span class="lbl">Margen rojo</span><input type="checkbox" data-s="paper.margin"></label>
           <label class="field range"><span class="lbl">Textura</span><input type="range" data-s="paper.grain" min="0" max="1" step="0.05"></label>
-        </details>
+        </section>
 
-        <details>
-          <summary>Letra</summary>
+        <section class="sec" data-sec="hand">
+          <h2>Letra</h2>
           <div class="chips" id="source-chips" role="group" aria-label="Qué letra usar"></div>
           <p class="hint" id="hand-status"></p>
-        </details>
-      </aside>
+        </section>
+
+        <section class="sec" data-sec="look">
+          <h2>Aspecto</h2>
+          <div class="field"><span class="lbl" id="lbl-pal">Paleta</span><div class="chips" id="pal-chips" role="group" aria-labelledby="lbl-pal"></div></div>
+          <div class="field"><span class="lbl">Colores (tocá uno para cambiarlo)</span>
+            <div class="pickers" id="pickers"></div>
+          </div>
+          <div class="field"><span class="lbl" id="lbl-bgfx">Fondo</span><div class="chips" id="bg-chips" role="group" aria-labelledby="lbl-bgfx"></div></div>
+          <div class="field"><span class="lbl" id="lbl-mat">Vidrio</span><div class="chips" id="mat-chips" role="group" aria-labelledby="lbl-mat"></div></div>
+          <label class="field range"><span class="lbl">Aurora</span><input type="range" data-t="aurO" min="0" max="100" step="5"></label>
+          <label class="field range"><span class="lbl">Grano de papel</span><input type="range" data-t="grain" min="0" max="100" step="5"></label>
+          <label class="field range"><span class="lbl">Cuerpo del vidrio</span><input type="range" data-t="thick" min="0" max="100" step="5"></label>
+          <label class="field range"><span class="lbl">Desenfoque</span><input type="range" data-t="blur" min="0" max="30" step="1"></label>
+          <label class="field range"><span class="lbl">Esquinas</span><input type="range" data-t="radius" min="0" max="32" step="1"></label>
+          <label class="field range"><span class="lbl">Tamaño del texto</span><input type="range" data-t="fs" min="13" max="19" step="1"></label>
+          <label class="field toggle"><span class="lbl">Borde de luz</span><input type="checkbox" data-t="edge"></label>
+          <label class="field toggle" id="row-refract"><span class="lbl">Refracción <small class="muted">(solo Chrome y Edge)</small></span><input type="checkbox" data-t="refract"></label>
+          <label class="field toggle"><span class="lbl">Animaciones</span><input type="checkbox" data-t="anim"></label>
+          <button type="button" class="link-btn" id="look-reset">Volver a «Mi diseño»</button>
+        </section>
+      </div>
 
       <div id="stage" class="stage">
-        <div class="stage-bar">
-          <div class="pager" role="group" aria-label="Hojas">
-            <button class="icon-btn sm" id="pg-prev" aria-label="Hoja anterior" data-icon="chevL"></button>
-            <span id="pg-label"><span class="long">Hoja 1 de 1</span><span class="short" aria-hidden="true">1/1</span></span>
-            <button class="icon-btn sm" id="pg-next" aria-label="Hoja siguiente" data-icon="chevR"></button>
-            <button class="btn sm" id="btn-new" style="margin-left:8px">Nueva carta</button>
-          </div>
-          <div class="zoom" role="group" aria-label="Zoom">
-            <button class="icon-btn sm" id="z-out" aria-label="Alejar" data-icon="minus"></button>
-            <button class="icon-btn sm wide" id="z-fit" aria-label="Ver la hoja entera">Hoja entera</button>
-            <button class="icon-btn sm" id="z-in" aria-label="Acercar" data-icon="plus"></button>
-          </div>
-        </div>
-        <div class="notice" id="demo-notice" hidden>
+        <div class="notice gp" id="demo-notice" hidden>
           <p><b>Escribís con una letra de ejemplo.</b><span class="full"> Cargá la tuya para que las cartas salgan con tu puño.</span></p>
           <button class="btn sm primary" id="notice-go">Cargar mi letra</button>
           <button class="icon-btn sm" id="notice-close" aria-label="Ocultar aviso" data-icon="close"></button>
@@ -119,14 +139,26 @@
             <p class="empty-hint" id="empty-hint"></p>
           </div>
         </div>
+        <!-- barra flotante bajo la hoja -->
+        <div class="stage-bar g" role="toolbar" aria-label="Hojas y zoom">
+          <div class="pager" role="group" aria-label="Hojas">
+            <button class="icon-btn sm" id="pg-prev" aria-label="Hoja anterior" data-icon="chevL"></button>
+            <span id="pg-label"><span class="long">Hoja 1 de 1</span><span class="short" aria-hidden="true">1/1</span></span>
+            <button class="icon-btn sm" id="pg-next" aria-label="Hoja siguiente" data-icon="chevR"></button>
+          </div>
+          <div class="zoom" role="group" aria-label="Zoom">
+            <button class="icon-btn sm" id="z-out" aria-label="Alejar" data-icon="minus"></button>
+            <button class="icon-btn sm wide" id="z-fit" aria-label="Ver la hoja entera">Hoja entera</button>
+            <button class="icon-btn sm" id="z-in" aria-label="Acercar" data-icon="plus"></button>
+          </div>
+          <button class="hold" id="btn-new" type="button" aria-label="Nueva carta: mantené apretado para empezar de cero">
+            <i aria-hidden="true"></i><span class="hl">Mantené: nueva carta</span><span class="hs" aria-hidden="true">Nueva</span>
+          </button>
+        </div>
       </div>
 
-      <aside id="note" class="note panel" aria-label="Nota de referencia">
-        <div class="drawer-grip" aria-hidden="true"></div>
-        <div class="side-switch" role="group" aria-label="Panel lateral">
-          <button type="button" data-side="note" aria-pressed="true">Nota</button>
-          <button type="button" data-side="rail" aria-pressed="false">Ajustes</button>
-        </div>
+      <!-- nota de referencia: cajón a la derecha -->
+      <aside id="note" class="note gp" aria-label="Nota de referencia">
         <div class="note-head">
           <h2>Nota de referencia</h2>
           <div class="note-tools">
@@ -137,18 +169,6 @@
         </div>
         <textarea id="note-text" spellcheck="false" aria-label="Nota de referencia" placeholder="Pegá o escribí acá la carta que querés copiar a mano. No sale en la hoja: es solo para mirar."></textarea>
       </aside>
-
-      <nav class="dock" aria-label="Accesos rápidos">
-        <button class="dock-btn" data-drawer="note" aria-label="Nota de referencia">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg><span>Nota</span>
-        </button>
-        <button class="dock-btn" data-drawer="rail" aria-label="Ajustes">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20c2.2-.2 4.6-1.4 6.7-3.5l7.6-7.6a2.1 2.1 0 0 0-3-3L7.7 13.5C5.6 15.6 4.4 18 4 20Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Ajustes</span>
-        </button>
-        <button class="dock-btn" id="dock-print" aria-label="Imprimir carta">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5a1 1 0 0 1-1 1h-2M7 14h10v6H7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Imprimir</span>
-        </button>
-      </nav>
     </section>
 
     <!-- ===================== MI LETRA ===================== -->
@@ -159,14 +179,14 @@
           <p>Escribís tus caracteres una vez sobre una hoja impresa, le sacás una foto y la app los guarda. Cuantas más veces repitas cada letra, más natural se ve el texto.</p>
         </header>
 
-        <section class="card" aria-labelledby="h-step1">
+        <section class="card gp" aria-labelledby="h-step1">
           <div class="card-head"><span class="num" aria-hidden="true">1</span><h2 id="h-step1">Imprimí la plantilla</h2></div>
           <p class="muted">Son 7 páginas A4. Imprimilas al 100 % (sin “ajustar a la página”) y escribí con la lapicera que quieras usar: <strong>un casillero, una variante</strong>. Para sumar variantes, imprimí las mismas páginas otra vez y repetí.</p>
           <ul class="pages" id="pages-list"></ul>
           <div class="row"><button class="btn" id="tpl-all">Imprimir las 7 páginas</button></div>
         </section>
 
-        <section class="card" aria-labelledby="h-step2">
+        <section class="card gp" aria-labelledby="h-step2">
           <div class="card-head"><span class="num" aria-hidden="true">2</span><h2 id="h-step2">Sacale una foto</h2></div>
           <p class="muted">Con buena luz, de frente, mostrando las <strong>cuatro marcas negras</strong> de las esquinas. Podés subir varias fotos a la vez y repetir cuando quieras sumar variantes.</p>
           <div class="row wrap">
@@ -175,7 +195,7 @@
           </div>
         </section>
 
-        <section class="card" aria-labelledby="h-step3">
+        <section class="card gp" aria-labelledby="h-step3">
           <div class="card-head"><span class="num" aria-hidden="true">3</span><h2 id="h-step3">Revisá tus caracteres</h2></div>
           <p class="muted" id="cov-summary"></p>
           <div id="coverage"></div>
@@ -189,11 +209,11 @@
     </section>
   </main>
 
-  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="toast" role="status" aria-live="polite"><span class="tmsg"></span><button type="button" class="tact" hidden></button></div>
 </div>
 
 <!-- revisión de una foto -->
-<dialog id="review" aria-labelledby="review-title">
+<dialog id="review" class="gp" aria-labelledby="review-title">
   <form method="dialog" class="dlg">
     <h3 id="review-title">Ajustá las esquinas</h3>
     <p class="muted">Arrastrá los cuatro puntos hasta el <strong>centro de cada marca negra</strong>. La grande va arriba a la izquierda.</p>
@@ -212,7 +232,7 @@
 </dialog>
 
 <!-- variantes de un carácter -->
-<dialog id="variants" aria-labelledby="variants-title">
+<dialog id="variants" class="gp" aria-labelledby="variants-title">
   <form method="dialog" class="dlg">
     <h3 id="variants-title">Variantes</h3>
     <div class="variants" id="variants-list"></div>
@@ -221,7 +241,7 @@
 </dialog>
 
 <!-- versiones -->
-<dialog id="versions" aria-labelledby="versions-title">
+<dialog id="versions" class="gp" aria-labelledby="versions-title">
   <form method="dialog" class="dlg">
     <h3 id="versions-title">Versiones guardadas</h3>
     <div class="row"><input type="text" id="ver-name" placeholder="Nombre (opcional)" aria-label="Nombre de la versión"><button class="btn primary" id="ver-save" type="button">Guardar versión</button></div>
@@ -231,7 +251,7 @@
 </dialog>
 
 <!-- confirmación (reemplaza a confirm() del navegador) -->
-<dialog id="confirmdlg" aria-labelledby="confirm-title">
+<dialog id="confirmdlg" class="gp" aria-labelledby="confirm-title">
   <form method="dialog" class="dlg">
     <h3 id="confirm-title"></h3>
     <p class="muted" id="confirm-text"></p>
@@ -240,13 +260,22 @@
 </dialog>
 
 <!-- imprimir -->
-<dialog id="printdlg" aria-labelledby="print-title">
+<dialog id="printdlg" class="gp" aria-labelledby="print-title">
   <form method="dialog" class="dlg">
     <h3 id="print-title">Imprimir carta</h3>
     <p class="muted" id="print-info"></p>
     <div class="row end"><button class="btn" value="cancel">Cancelar</button><button class="btn primary" id="print-go" value="go">Imprimir carta</button></div>
   </form>
 </dialog>
+
+<!-- refracción del vidrio (solo se usa en Chrome y Edge) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <filter id="lens" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="2" seed="4" result="n"/>
+    <feGaussianBlur in="n" stdDeviation="6" result="nb"/>
+    <feDisplacementMap in="SourceGraphic" in2="nb" scale="26" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
 
 <script type="module" src="js/app.js"></script>
 </body>

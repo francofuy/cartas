@@ -8,6 +8,8 @@ import { loadPhoto, detectMarkers, defaultCorners, warpPage, detectPageCode, ext
 import { printLetter, printTemplates } from './print.js';
 import { icon, hydrateIcons } from './icons.js';
 import { drawWordmark } from './wordmark.js';
+import { loadTheme, applyTheme, Background } from './theme.js';
+import { setupLook, paintRange } from './look.js';
 
 /* ------------------------------------------------------------------ */
 /* Ajustes y almacenamiento simple                                     */
@@ -53,9 +55,14 @@ let fitMode = LS.get('pyl.fit', 'width');
 const isMobile = () => matchMedia('(max-width: 899px)').matches; // "compacto": celular y tablet vertical
 const isTouch = () => matchMedia('(pointer: coarse)').matches;
 
-function toast(msg, ms = 3600) {
-  const t = $('#toast');
-  t.textContent = msg; t.classList.add('show');
+// aviso breve; con `action` suma un botón (p. ej. «Deshacer»)
+function toast(msg, ms = 3600, action = null) {
+  const t = $('#toast'), btn = $('.tact', t);
+  $('.tmsg', t).textContent = msg;
+  btn.hidden = !action;
+  btn.onclick = action ? () => { clearTimeout(toast._t); t.classList.remove('show'); action.run(); } : null;
+  if (action) btn.textContent = action.label;
+  t.classList.add('show');
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), ms);
 }
 let busyEl = null;
@@ -168,6 +175,7 @@ function enhanceRanges() {
     row.append(lbl, out);
     lab.prepend(row);
     input._out = out;
+    if (!input.dataset.s) return; // los del panel «Aspecto» los maneja look.js
     // doble clic o doble toque: vuelve al valor de fábrica
     input.addEventListener('dblclick', () => {
       const path = input.dataset.s;
@@ -182,6 +190,7 @@ function syncControls() {
     const v = getPath(S, el.dataset.s);
     if (el.type === 'checkbox') el.checked = !!v; else el.value = v;
     if (el._out) el._out.textContent = (FORMAT[el.dataset.s] || String)(parseFloat(el.value));
+    if (el.type === 'range') paintRange(el);
   });
   ['#inst-chips', '#paper-chips', '#source-chips', '#ink-swatches', '#paper-swatches', '#line-swatches'].forEach((id) => $(id)._refresh?.());
 }
@@ -197,17 +206,6 @@ function setupResets() {
     syncControls(); settingChanged('size'); writer.relayout();
     toast('Valores restablecidos.', 1800);
   }));
-}
-
-/* panel lateral de tablet horizontal: pestañas Nota | Ajustes */
-function setupSideSwitch() {
-  const view = $('#view-write');
-  const set = (side) => {
-    view.dataset.side = side;
-    $$('.side-switch button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.side === side));
-  };
-  $$('.side-switch button').forEach((b) => b.addEventListener('click', () => set(b.dataset.side)));
-  set(view.dataset.side || 'note');
 }
 
 function buildControls() {
@@ -237,12 +235,12 @@ function buildControls() {
       const v = el.type === 'checkbox' ? el.checked : el.type === 'range' ? parseFloat(el.value) : el.value;
       setPath(S, path, v);
       if (el._out) el._out.textContent = (FORMAT[path] || String)(v);
+      if (el.type === 'range') paintRange(el);
       settingChanged(path);
     });
   });
   syncControls();
   setupResets();
-  setupSideSwitch();
   $('#motion-hint').hidden = !(reduceMotion() && !S.animate);
 }
 
@@ -263,7 +261,7 @@ function fit() {
   const sc = $('#scroller');
   const cs = getComputedStyle(sc);
   const availW = sc.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-  const availH = sc.clientHeight - parseFloat(cs.paddingTop) - 28;
+  const availH = sc.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) + 20;
   if (availW < 80 || availH < 80) return;
   // por defecto la hoja usa todo el ancho (hasta 760 px) para que la letra se lea; "Hoja entera" la ajusta a la altura
   const base = isMobile() ? availW : fitMode === 'page' ? Math.min(availW, (availH * 210) / 297) : Math.min(availW, 760);
@@ -351,28 +349,37 @@ function setupInput() {
 /* ------------------------------------------------------------------ */
 /* Cajones (celular) y vistas                                          */
 /* ------------------------------------------------------------------ */
-function closeDrawers() {
-  $('#rail').classList.toggle('open', false);
-  $('#note').classList.toggle('open', false);
-  $$('.dock-btn[data-drawer]').forEach((b) => b.classList.toggle('active', false));
+// ventanas de la barra: una sola abierta a la vez (ajustes en #pop, nota en su cajón)
+let openPanel = null;
+function setPanel(name) {
+  openPanel = name;
+  const isNote = name === 'note';
+  const pop = $('#pop'), note = $('#note');
+  $$('.dock-btn[data-panel]').forEach((b) => { const on = b.dataset.panel === name; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+  note.classList.toggle('open', isNote);
+  $('#view-write').classList.toggle('note-open', isNote);
+  const sec = name && !isNote ? $(`.sec[data-sec="${name}"]`, pop) : null;
+  $$('.sec', pop).forEach((s) => { s.classList.toggle('act', s === sec); s.classList.remove('go'); });
+  if (sec) {
+    [...sec.children].forEach((c, i) => c.style.setProperty('--i', i));
+    void sec.offsetWidth; sec.classList.add('go');
+  }
+  pop.classList.toggle('open', !!sec);
+  pop.setAttribute('aria-label', sec ? sec.querySelector('h2').textContent : 'Ajustes');
+  if (name && isMobile()) $('#cap').blur();
 }
-function toggleDrawer(id) {
-  const el = $('#' + id);
-  const open = !el.classList.contains('open');
-  closeDrawers();
-  el.classList.toggle('open', open);
-  $$('.dock-btn[data-drawer]').forEach((b) => b.classList.toggle('active', open && b.dataset.drawer === id));
-  if (open) $('#cap').blur();
-}
+const closeDrawers = () => setPanel(null);
+const toggleDrawer = (name) => setPanel(openPanel === name ? null : name);
 
 let viewReady = false;
 function setView(v) {
   const changed = document.body.dataset.view !== v;
   document.body.dataset.view = v;
   $$('.tab').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === v));
+  $('#seg').style.setProperty('--i', v === 'hand' ? 1 : 0);
   $('#view-write').hidden = v !== 'write';
   $('#view-hand').hidden = v !== 'hand';
-  $('#btn-print').hidden = v !== 'write' || isMobile();
+  $('#btn-print').hidden = v !== 'write';
   if (v === 'write') requestAnimationFrame(fit);
   closeDrawers();
   if (viewReady && changed) { // fundido corto, solo al cambiar de sección
@@ -468,7 +475,6 @@ function setupPrint() {
     $('#printdlg').showModal();
   };
   $('#btn-print').addEventListener('click', open);
-  $('#dock-print').addEventListener('click', open);
   $('#print-go').addEventListener('click', async (e) => {
     e.preventDefault();
     $('#printdlg').close();
@@ -723,8 +729,71 @@ function refreshWordmark(animate = false) {
   try { drawWordmark(c, lib, { animate }); } catch (e) { console.warn('wordmark', e); }
 }
 
+/* nueva carta: mantener apretado ~1 s (E12). Con teclado, Enter o espacio piden confirmación. */
+let undoCarta = null;
+function setupNewLetter() {
+  const btn = $('#btn-new'), fill = $('i', btn);
+  const HOLD = 950;
+  let t0 = 0, raf = 0, id = null;
+  const reset = () => { cancelAnimationFrame(raf); raf = 0; id = null; btn.classList.remove('full'); fill.style.transform = 'scaleX(0)'; fill.style.transition = 'transform 200ms ease'; };
+  const clear = () => {
+    const prev = { text: writer.text, seed: S.seed };
+    S.seed = 1 + Math.floor(Math.random() * 1e6); saveSettings();
+    writer.setText(''); writer._syncCap(); persistDraft();
+    if (!isMobile()) $('#cap').focus({ preventScroll: true });
+    if (!prev.text.trim()) return;
+    undoCarta = prev;
+    toast('Carta nueva. La anterior sigue acá por unos segundos.', 8000, { label: 'Deshacer', run: () => {
+      S.seed = prev.seed; saveSettings(); writer.setText(prev.text); writer._syncCap(); persistDraft(); undoCarta = null;
+    } });
+  };
+  const step = () => {
+    const p = Math.min(1, (performance.now() - t0) / HOLD);
+    fill.style.transition = 'none'; fill.style.transform = `scaleX(${p})`;
+    if (p >= 1) { btn.classList.add('full'); reset(); clear(); return; }
+    raf = requestAnimationFrame(step);
+  };
+  btn.addEventListener('pointerdown', (e) => {
+    if (e.button > 0) return;
+    id = e.pointerId; try { btn.setPointerCapture(id); } catch { /* nada */ }
+    if (reduceMotion()) { clear(); return; }
+    t0 = performance.now(); raf = requestAnimationFrame(step);
+  });
+  ['pointerup', 'pointercancel', 'pointerleave', 'lostpointercapture'].forEach((ev) => btn.addEventListener(ev, () => { if (raf) reset(); }));
+  btn.addEventListener('keydown', async (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    if (!writer.text.trim()) return;
+    if (await ask('¿Empezar una carta nueva?', 'Se descarta el borrador actual. Si querés conservarlo, guardalo antes como versión.', 'Empezar carta nueva', true)) clear();
+  });
+  btn.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+
+/* onda al tocar el botón principal (E11) */
+function setupRipple() {
+  document.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest?.('.btn.primary');
+    if (!b || b.disabled || !document.body.classList.contains('anim-on')) return;
+    const r = b.getBoundingClientRect(), s = document.createElement('span');
+    const d = Math.max(r.width, r.height);
+    s.className = 'r'; s.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX - r.left - d / 2}px;top:${e.clientY - r.top - d / 2}px`;
+    b.append(s); s.addEventListener('animationend', () => s.remove());
+  });
+}
+
+let THEME = null, BG = null;
+function setupTheme() {
+  THEME = loadTheme();
+  const sync = () => document.body.classList.toggle('anim-on', THEME.anim && THEME.ripple !== false && !reduceMotion());
+  applyTheme(THEME); sync();
+  BG = new Background($('#dots'));
+  setupLook(THEME, () => { sync(); BG.draw(); refreshWordmark(false); });
+}
+
 async function init() {
   hydrateIcons();
+  setupTheme();
+  setupRipple();
   await loadDemoFont();
   try { lib.setMine(await DB.allGlyphs()); } catch (e) { console.warn(e); }
   applySource();
@@ -740,12 +809,7 @@ async function init() {
   renderCoverage();
   renderHandStatus();
 
-  $('#btn-new').addEventListener('click', async () => {
-    if (writer.text.trim() && !(await ask('¿Empezar una carta nueva?', 'Se descarta el borrador actual. Si querés conservarlo, guardalo antes como versión.', 'Empezar carta nueva', true))) return;
-    S.seed = 1 + Math.floor(Math.random() * 1e6); saveSettings();
-    writer.setText(''); writer._syncCap(); persistDraft();
-    if (!isMobile()) $('#cap').focus({ preventScroll: true });
-  });
+  setupNewLetter();
   $('#pg-prev').addEventListener('click', () => writer.setPage(writer.page - 1));
   $('#pg-next').addEventListener('click', () => writer.setPage(writer.page + 1));
   $('#z-in').addEventListener('click', () => { zoom = clamp(zoom * 1.2, 0.6, 3.2); fit(); });
@@ -754,7 +818,8 @@ async function init() {
   fitLabel();
   $('#z-fit').addEventListener('click', () => { fitMode = fitMode === 'page' ? 'width' : 'page'; LS.set('pyl.fit', fitMode); zoom = 1; fitLabel(); fit(); $('#scroller').scrollTo({ top: 0 }); });
   $$('.tab').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
-  $$('.dock-btn[data-drawer]').forEach((b) => b.addEventListener('click', () => toggleDrawer(b.dataset.drawer)));
+  $$('.dock-btn[data-panel]').forEach((b) => b.addEventListener('click', () => toggleDrawer(b.dataset.panel)));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openPanel && !document.querySelector('dialog[open]')) { const b = $(`.dock-btn[data-panel="${openPanel}"]`); closeDrawers(); b?.focus(); } });
 
   const draft = LS.get('pyl.draft', { text: '' });
   writer.setText(draft.text || '');
