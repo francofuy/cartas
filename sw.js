@@ -1,5 +1,5 @@
 // Service worker: deja la app disponible sin conexión.
-const CACHE = 'puno-y-letra-v3';
+const CACHE = 'puno-y-letra-v4';
 const ASSETS = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css', 'css/archivero.css',
   'js/app.js', 'js/capture.js', 'js/chars.js', 'js/db.js', 'js/glyphs.js', 'js/icons.js', 'js/layout.js', 'js/look.js', 'js/paper.js',

@@ -26,6 +26,12 @@ export function setupRefs(h) {
   /* ------------------------------------------------------------------ */
   /* Datos                                                               */
   /* ------------------------------------------------------------------ */
+  // si el navegador no deja guardar en el dispositivo (ventana privada, vista previa), las cartas viven mientras la página esté abierta
+  let warned = false;
+  function warnMemory(e) {
+    console.warn('Archivero: no se pudo guardar en el dispositivo', e);
+    if (!warned) { warned = true; h.toast('Este navegador no deja guardar en el dispositivo: las cartas se conservan solo mientras esta página esté abierta.', 7000); }
+  }
   async function load() {
     try { refs = await DB.allRefs(); } catch (e) { console.warn('No pude leer el archivero', e); refs = []; }
     refs.sort((a, b) => (b.ts || 0) - (a.ts || 0));
@@ -34,7 +40,7 @@ export function setupRefs(h) {
   }
   async function save(r) {
     r.ts = Date.now();
-    await DB.putRef(r);
+    try { await DB.putRef(r); } catch (e) { warnMemory(e); }
     const i = refs.findIndex((x) => x.id === r.id);
     if (i >= 0) refs[i] = r; else refs.unshift(r);
     refs.sort((a, b) => (b.ts || 0) - (a.ts || 0));
@@ -42,7 +48,7 @@ export function setupRefs(h) {
     if (activeId === r.id) applyActive();
   }
   async function remove(id) {
-    await DB.deleteRef(id);
+    try { await DB.deleteRef(id); } catch (e) { warnMemory(e); }
     refs = refs.filter((r) => r.id !== id);
     if (activeId === id) { activeId = null; h.LS.set('pyl.activeRef', null); }
     render(); applyActive();

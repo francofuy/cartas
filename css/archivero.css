@@ -144,3 +144,21 @@ body.noanim .drw.open .sht-w, body.noanim .peek-sheet.in { animation: none !impo
   .sheetops { border-left: 0; margin-left: 0; padding-left: 0; }
   .stage-bar { flex-wrap: nowrap; border-radius: 999px; }
 }
+
+/* pantallas anchas: la hoja se corre para que el panel abierto no tape la hoja ni la barra */
+@media (min-width: 1181px) {
+  .stage { left: calc(var(--dock-w) + var(--left-w, 0px)); transition: left 320ms var(--ease), right 320ms var(--ease); }
+}
+
+/* la barra se adapta al ancho que le queda a la hoja (no al de la pantalla) */
+.stage { container-type: inline-size; container-name: stage; }
+@container stage (max-width: 800px) {
+  .bbtn .lab { display: none; }
+  .bbtn { min-width: 40px; justify-content: center; padding: 0 8px; }
+  .hold .hl { display: none; } .hold .hs { display: inline; }
+}
+@container stage (max-width: 600px) {
+  .zoom .wide { display: none; }
+  #pg-label .long { display: none; } #pg-label .short { display: inline; }
+  .pager > span { min-width: 0; padding: 0 2px; }
+}

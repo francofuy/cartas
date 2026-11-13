@@ -392,6 +392,7 @@ function setLeft(name) {
   pop.classList.toggle('open', !!sec);
   pop.setAttribute('aria-label', sec ? sec.querySelector('h2').textContent : 'Ajustes');
   cab.classList.toggle('open', name === 'cab');
+  $('#view-write').style.setProperty('--left-w', name === 'cab' ? '480px' : sec ? '376px' : '0px');
   if (name !== 'cab') refsApi?.closePeek();
   if (name && isMobile()) { $('#cap').blur(); setNote(false); }
   markDock();
