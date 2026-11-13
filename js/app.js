@@ -352,8 +352,10 @@ function setupPrint() {
     e.preventDefault();
     $('#printdlg').close();
     busy('Preparando las hojas para imprimir…');
-    try { await printLetter(writer, [...Array(writer.layout.pages).keys()]); }
-    catch (err) { console.error(err); toast('No pude preparar la impresión.'); }
+    try {
+      const res = await printLetter(writer, [...Array(writer.layout.pages).keys()]);
+      if (res === 'blocked') toast('Este entorno no deja abrir la impresión. Abrí la app directamente en el navegador para imprimir.', 6500);
+    } catch (err) { console.error(err); toast('No pude preparar la impresión.'); }
     unbusy();
   });
 }
@@ -361,6 +363,11 @@ function setupPrint() {
 /* ------------------------------------------------------------------ */
 /* MI LETRA                                                            */
 /* ------------------------------------------------------------------ */
+async function runTemplatePrint(pages) {
+  const res = await printTemplates(pages);
+  if (res === 'blocked') toast('Este entorno no deja abrir la impresión. Abrí la app directamente en el navegador para imprimir.', 6500);
+}
+
 function buildTemplateGrid() {
   const g = $('#tpl-grid');
   g.innerHTML = '';
@@ -368,10 +375,10 @@ function buildTemplateGrid() {
     const d = document.createElement('div'); d.className = 'tpl';
     d.innerHTML = `<b>Página ${p + 1}</b><small>${pageLabel(p)}</small>`;
     const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Imprimir';
-    b.addEventListener('click', () => printTemplates([p]));
+    b.addEventListener('click', () => runTemplatePrint([p]));
     d.append(b); g.append(d);
   });
-  $('#tpl-all').addEventListener('click', () => printTemplates(TEMPLATE_PAGES.map((_, i) => i)));
+  $('#tpl-all').addEventListener('click', () => runTemplatePrint(TEMPLATE_PAGES.map((_, i) => i)));
 }
 
 function renderCoverage() {

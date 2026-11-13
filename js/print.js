@@ -10,19 +10,33 @@ function root() {
   return r;
 }
 
+// Devuelve 'ok' o 'blocked' (si el entorno no deja abrir el diálogo de impresión)
 function doPrint(r) {
   return new Promise((resolve) => {
-    const done = () => { window.removeEventListener('afterprint', done); r.innerHTML = ''; resolve(); };
-    window.addEventListener('afterprint', done);
+    let started = false;
+    const onBefore = () => { started = true; };
+    const done = (result) => {
+      window.removeEventListener('beforeprint', onBefore);
+      window.removeEventListener('afterprint', onAfter);
+      r.innerHTML = '';
+      resolve(result);
+    };
+    const onAfter = () => done('ok');
+    window.addEventListener('beforeprint', onBefore);
+    window.addEventListener('afterprint', onAfter);
     // pequeña espera para que el navegador pinte las imágenes antes de abrir el diálogo
-    setTimeout(() => window.print(), 250);
+    setTimeout(() => {
+      try { window.print(); } catch (e) { /* bloqueado */ }
+      setTimeout(() => { if (!started) done('blocked'); }, 500);
+      setTimeout(() => done('ok'), 180000); // respaldo por si afterprint nunca llega
+    }, 250);
   });
 }
 
 export async function printTemplates(pages) {
   const r = root();
   for (const p of pages) r.append(templatePageEl(p));
-  await doPrint(r);
+  return doPrint(r);
 }
 
 export async function printLetter(writer, pageIdxs) {
@@ -40,6 +54,7 @@ export async function printLetter(writer, pageIdxs) {
     await img.decode().catch(() => {});
     r.append(img);
   }
-  await doPrint(r);
+  const res = await doPrint(r);
   urls.forEach((u) => URL.revokeObjectURL(u));
+  return res;
 }

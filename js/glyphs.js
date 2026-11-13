@@ -21,7 +21,9 @@ export function loadDemoFont(base = '') {
   if (!fontPromise) {
     fontPromise = (async () => {
       try {
-        const ff = new FontFace('CaveatDemo', `url(${base}fonts/caveat-500.woff2)`, { weight: '500' });
+        // window.__CAVEAT_URL lo define la versión empaquetada en un solo archivo (fuente embebida)
+        const src = window.__CAVEAT_URL || `${base}fonts/caveat-500.woff2`;
+        const ff = new FontFace('CaveatDemo', `url(${src})`, { weight: '500' });
         await ff.load();
         document.fonts.add(ff);
       } catch (e) { console.warn('No se pudo cargar la fuente de ejemplo', e); }

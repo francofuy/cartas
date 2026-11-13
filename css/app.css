@@ -17,8 +17,9 @@
   --top-h: 56px;
   color-scheme: light;
 }
+/* oscuro: automático según el dispositivo, o forzado con data-theme */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #131419;
     --panel: #1b1d24;
     --panel-2: #22252d;
@@ -32,6 +33,20 @@
     --sheet-shadow: 0 2px 6px rgb(0 0 0 / .5), 0 24px 60px rgb(0 0 0 / .55);
     color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --bg: #131419;
+  --panel: #1b1d24;
+  --panel-2: #22252d;
+  --ink: #ecebe5;
+  --muted: #9b9a91;
+  --line: #2d303a;
+  --accent: #a9c0f2;
+  --accent-ink: #0f1424;
+  --danger: #ef8a84;
+  --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 12px 34px rgb(0 0 0 / .35);
+  --sheet-shadow: 0 2px 6px rgb(0 0 0 / .5), 0 24px 60px rgb(0 0 0 / .55);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
