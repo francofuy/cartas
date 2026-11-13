@@ -17,6 +17,7 @@ export function setupRefs(h) {
   let activeId = h.LS.get('pyl.activeRef', null);
   let peekId = null;
   let editingId = null;
+  let pinned = h.LS.get('pyl.notePinned', false); // referencia fijada: la hoja se corre y no queda tapada
   const subs = new Set();
   const emit = () => subs.forEach((f) => f());
   const byId = (id) => refs.find((r) => r.id === id) || null;
@@ -210,6 +211,7 @@ export function setupRefs(h) {
     const floating = mode() === 'float';
     $('#note').classList.toggle('open', open && !floating);
     $('#view-write').classList.toggle('note-open', open && !floating);
+    $('#view-write').classList.toggle('note-pinned', open && !floating && pinned);
     win().hidden = !(open && floating);
     if (open && floating) restoreWin();
     if (open) requestAnimationFrame(() => { const r = active(); if (r) renderView(r); });
@@ -299,6 +301,10 @@ export function setupRefs(h) {
     closePeek(); await remove(r.id); h.toast('Carta borrada.', 2000);
   });
   $('#peek').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); closePeek(); } });
+  const pinBtn = $('#ref-pin');
+  const paintPin = () => { pinBtn.setAttribute('aria-pressed', pinned); pinBtn.classList.toggle('on', pinned); };
+  paintPin();
+  pinBtn.addEventListener('click', () => { pinned = !pinned; h.LS.set('pyl.notePinned', pinned); paintPin(); showNote(h.isNoteOpen()); h.toast(pinned ? 'Referencia fijada: la hoja se corre para no quedar tapada.' : 'Referencia suelta: puede quedar sobre la hoja.', 2200); });
   $('#ref-drop').addEventListener('click', dropRef);
   $('#ref-font').addEventListener('click', () => { h.S().refFont = h.S().refFont === 'hand' ? 'legible' : 'hand'; h.saveSettings(); h.syncControls(); const r = active(); if (r) renderView(r, true); });
   $('#note-text').addEventListener('input', debounce(refreshGhost, 250));

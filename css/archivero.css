@@ -172,3 +172,9 @@ body.noanim .spine, body.noanim .fc.in, body.noanim .peek-sheet.in { animation: 
 .fc-actions { flex-wrap: nowrap; width: max-content; }
 .fc-actions .btn { white-space: nowrap; }
 .cj-feat { width: max-content; }
+
+/* referencia fijada: la hoja se corre y no queda tapada (en cualquier ancho de escritorio) */
+.icon-btn.on, .icon-btn.on:hover:not(:disabled) { background: var(--accent); color: var(--accent-ink); }
+#refwin #ref-pin { display: none; }
+@media (min-width: 900px) { .write.note-pinned .stage { right: 372px; } }
+@media (max-width: 899px) { #ref-pin { display: none; } }

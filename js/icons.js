@@ -21,6 +21,7 @@ const P = {
   download: '<path d="M12 4v10M8 10.5l4 4 4-4M5 19h14"/>',
   upload: '<path d="M12 15V5M8 8.5l4-4 4 4M5 19h14"/>',
   search: '<circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/>',
+  pin: '<path d="M9 4h6l-1 5 3 3v1.5H7V12l3-3zM12 13.5V20"/>',
   cabinet: '<path d="M4 4h16v16H4zM4 12h16M10 8h4M10 16h4"/>',
 };
 export function icon(name, size) {
