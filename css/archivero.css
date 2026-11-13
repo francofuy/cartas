@@ -4,54 +4,49 @@
 .pop .sub { font-size: .9em; margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--ring); }
 
 /* ---------- el cajón de la esquina ---------- */
-.cajon { position: fixed; left: 20px; bottom: 0; z-index: 14; width: 168px; color: var(--g-text-panel);
-  transform: translateY(calc(100% - 50px)); transition: transform 560ms var(--ease), width 560ms var(--ease); }
-.cajon.open { transform: none; width: min(560px, calc(100vw - 40px)); }
-.cj-box { border-radius: calc(var(--r) * 1.5) calc(var(--r) * 1.5) 0 0; overflow: hidden;
-  background: rgb(var(--g-tint-panel) / max(var(--g-a-panel), .82)); backdrop-filter: blur(var(--g-blur-panel)) saturate(var(--g-sat)); -webkit-backdrop-filter: blur(var(--g-blur-panel)) saturate(var(--g-sat));
-  border: 1px solid rgb(255 255 255 / .6); border-bottom: 0;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .8), 0 -10px 30px -12px rgb(25 25 100 / .4); }
-.cj-handle { position: relative; width: 100%; height: 50px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 0; background: none; color: inherit; cursor: pointer; font-size: .94em; }
-.cj-handle .knob { position: absolute; top: 9px; left: 50%; width: 44px; height: 8px; margin-left: -22px; border-radius: 6px; background: linear-gradient(180deg, color-mix(in srgb, currentColor 36%, transparent), color-mix(in srgb, currentColor 14%, transparent)); box-shadow: inset 0 1px 0 rgb(255 255 255 / .5), 0 2px 3px rgb(0 0 0 / .18); }
-.cj-handle b { margin-top: 12px; font-weight: 600; }
-.cj-handle .cnt { margin-top: 12px; font-size: .8em; font-variant-numeric: tabular-nums; padding: 1px 8px; border-radius: 99px; background: color-mix(in srgb, currentColor 12%, transparent); }
+.cajon { position: fixed; left: 20px; bottom: 0; z-index: 14; width: 150px; color: var(--g-text-panel);
+  transform: translateY(calc(100% - 42px)); transition: transform 520ms var(--ease), width 520ms var(--ease); }
+.cajon.open { transform: none; width: min(520px, calc(100vw - 40px)); }
+.cj-box { border-radius: calc(var(--r) * 1.2) calc(var(--r) * 1.2) 0 0; overflow: hidden;
+  background: rgb(var(--g-tint-panel) / max(var(--g-a-panel), .85)); backdrop-filter: blur(var(--g-blur-panel)) saturate(var(--g-sat)); -webkit-backdrop-filter: blur(var(--g-blur-panel)) saturate(var(--g-sat));
+  border: 1px solid rgb(255 255 255 / .6); border-bottom: 0; box-shadow: 0 -8px 24px -12px rgb(25 25 100 / .4); }
+.cj-handle { width: 100%; height: 42px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 0; background: none; color: inherit; cursor: pointer; font-size: .94em; font-weight: 600; }
+.cj-handle .knob { display: none; }
+.cj-handle .cnt { font-size: .8em; font-weight: 500; font-variant-numeric: tabular-nums; padding: 1px 8px; border-radius: 99px; background: color-mix(in srgb, currentColor 12%, transparent); }
 .cj-handle .cnt:empty { display: none; }
 .cj-handle:focus-visible { outline: 2px solid currentColor; outline-offset: -4px; border-radius: 12px; }
-.cajon.pinned .cj-handle .knob { background: var(--accent); }
-.cj-body { padding: 0 14px 0; }
-.cj-tools { display: flex; align-items: center; gap: 6px; padding-bottom: 10px; }
+.cajon.pinned .cj-handle::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.cj-body { padding: 0 14px; }
+.cj-tools { display: flex; align-items: center; gap: 6px; padding-bottom: 8px; }
 .cj-tools .cab-search { flex: 1; min-width: 0; }
 .cj-tools .file { cursor: pointer; }
-.cab-search { display: flex; align-items: center; gap: 8px; padding: 0 14px; min-height: 40px; border-radius: 999px; background: var(--fill); box-shadow: 0 0 0 1px var(--ring) inset; cursor: text; }
+.cab-search { display: flex; align-items: center; gap: 8px; padding: 0 14px; min-height: 38px; border-radius: 999px; background: var(--fill); box-shadow: 0 0 0 1px var(--ring) inset; cursor: text; }
 .cab-search:focus-within { box-shadow: 0 0 0 2px var(--accent) inset; }
 .cab-search .ico { display: grid; opacity: .7; }
-.cab-search input { flex: 1; min-width: 0; border: 0; background: none; outline: none; box-shadow: none; padding: 0; min-height: 38px; font-size: 16px; color: inherit; }
+.cab-search input { flex: 1; min-width: 0; border: 0; background: none; outline: none; box-shadow: none; padding: 0; min-height: 36px; font-size: 16px; color: inherit; }
+.cj-hover { margin: 0; min-height: 1.5em; padding: 0 4px 6px; font-size: .85em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cj-hover b { font-weight: 600; }
 
-/* la bandeja: las cartas están paradas, con el lomo hacia vos */
-.cj-tray { display: flex; align-items: flex-end; gap: 5px; height: 176px; padding: 22px 16px 0; overflow-x: auto; overflow-y: hidden; perspective: 520px;
-  border-radius: calc(var(--r) * .7) calc(var(--r) * .7) 0 0;
-  background: linear-gradient(180deg, rgb(0 0 0 / .18), rgb(0 0 0 / .05) 75%); box-shadow: inset 0 10px 14px -8px rgb(0 0 0 / .35), inset 0 0 0 1px var(--ring); }
+/* la bandeja: hojas finas paradas y bien juntas, como en un organizador */
+.cj-tray { display: flex; align-items: flex-end; height: 168px; padding: 20px 12px 0; overflow-x: auto; overflow-y: hidden; border-radius: calc(var(--r) * .6) calc(var(--r) * .6) 0 0; background: color-mix(in srgb, currentColor 8%, transparent); box-shadow: inset 0 0 0 1px var(--ring); }
 .cj-empty { align-self: center; margin: 0 auto; text-align: center; font-size: .9em; padding: 0 20px; }
-.fold { flex: none; align-self: flex-end; writing-mode: vertical-rl; transform: rotate(180deg); max-height: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .72em; font-weight: 600; letter-spacing: .04em; padding: 8px 4px; margin: 0 4px 0 6px; border-radius: 6px; background: color-mix(in srgb, currentColor 14%, transparent); }
 .spine {
-  position: relative; flex: none; width: 40px; height: var(--h, 140px); padding: 10px 0 8px; border: 0; cursor: pointer; color: #2a2a32; border-radius: 3px 3px 0 0;
-  display: flex; align-items: flex-start; justify-content: center;
-  background: linear-gradient(90deg, rgb(255 255 255 / .5), rgb(255 255 255 / 0) 35%, rgb(0 0 0 / .08)), var(--c);
-  box-shadow: inset 0 2px 0 rgb(255 255 255 / .5), 2px 0 0 -1px color-mix(in srgb, var(--c) 78%, #000), -2px 0 0 -1px color-mix(in srgb, var(--c) 86%, #000), 0 8px 12px -6px rgb(0 0 0 / .45);
-  transform: rotateX(-4deg); transform-origin: 50% 100%;
-  transition: transform 340ms cubic-bezier(.34, 1.3, .64, 1), box-shadow 260ms ease, opacity 240ms ease;
-  animation: lomo 460ms var(--ease) both; animation-delay: calc(var(--i, 0) * 30ms + 200ms);
+  position: relative; flex: none; width: 8px; height: var(--h, 140px); padding: 0; border: 0; cursor: pointer; border-radius: 1px 1px 0 0;
+  background: linear-gradient(90deg, rgb(255 255 255 / .45), rgb(255 255 255 / 0) 45%, rgb(0 0 0 / .06)), var(--c);
+  box-shadow: 1px 0 0 color-mix(in srgb, var(--c) 72%, #000), 0 6px 8px -5px rgb(0 0 0 / .4);
+  transition: transform 300ms cubic-bezier(.34, 1.3, .64, 1), box-shadow 240ms ease, opacity 240ms ease;
 }
-@keyframes lomo { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; } }
-.spine .sp-t { writing-mode: vertical-rl; transform: rotate(180deg); max-height: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 12px/1 var(--font); letter-spacing: .01em; }
-.spine .act { position: absolute; bottom: 5px; left: 50%; margin-left: -8px; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: none; place-items: center; }
-.spine .act svg { width: 11px; height: 11px; }
-.spine.on .act { display: grid; }
-.spine.hit { box-shadow: inset 0 2px 0 rgb(255 255 255 / .5), 0 0 0 2px color-mix(in srgb, var(--accent) 65%, transparent), 0 8px 12px -6px rgb(0 0 0 / .45); }
-.spine:hover, .spine:focus-visible { transform: translateY(-14px) rotateX(0); box-shadow: inset 0 2px 0 rgb(255 255 255 / .5), 2px 0 0 -1px color-mix(in srgb, var(--c) 78%, #000), 0 18px 18px -8px rgb(0 0 0 / .5); }
-.spine:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
-.spine.out { opacity: .15; transform: translateY(8px); pointer-events: auto; }
-.spine.out:hover { transform: translateY(8px); }
+.spine.gap { margin-left: 12px; }
+.spine::before { content: ""; position: absolute; inset: 0 -1px; } /* un poco más de área para apuntar */
+.spine .act { position: absolute; bottom: 4px; left: 50%; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: var(--accent); display: none; }
+.spine .act svg { display: none; }
+.spine.on .act { display: block; }
+.spine.hit { box-shadow: 1px 0 0 color-mix(in srgb, var(--c) 72%, #000), 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent); }
+.spine:hover, .spine:focus-visible { transform: translateY(-14px); box-shadow: 1px 0 0 color-mix(in srgb, var(--c) 72%, #000), 0 16px 14px -8px rgb(0 0 0 / .5); z-index: 2; }
+.spine:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.spine.out { opacity: .15; transform: translateY(6px); }
+.spine.out:hover { transform: translateY(6px); }
+@media (pointer: coarse) { .spine { width: 14px; } .spine.gap { margin-left: 14px; } }
 
 /* la carta elegida: se da vuelta y se muestra de frente sobre el cajón */
 .cj-feat { position: absolute; bottom: calc(100% + 12px); width: 244px; display: grid; gap: 8px; justify-items: center; z-index: 3; }

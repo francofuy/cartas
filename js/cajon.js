@@ -49,10 +49,8 @@ export function setupCajon(h, R) {
     const groups = new Map();
     for (const r of shown) { const f = folderOf(r); if (!groups.has(f)) groups.set(f, []); groups.get(f).push(r); }
     const names = [...groups.keys()].sort((a, b) => (a === 'Sueltas') - (b === 'Sueltas') || a.localeCompare(b, 'es'));
-    names.forEach((name) => {
-      const sep = el('span', 'fold', name); sep.setAttribute('aria-hidden', 'true');
-      tray.append(sep);
-      groups.get(name).forEach((r, i) => tray.append(spine(r, i, needle)));
+    names.forEach((name, gi) => {
+      groups.get(name).forEach((r, i) => { const b = spine(r, i, needle); if (gi && !i) b.classList.add('gap'); tray.append(b); });
     });
     if (featId) markFeat();
   }
@@ -60,17 +58,27 @@ export function setupCajon(h, R) {
   function spine(r, i, needle) {
     const b = el('button', 'spine'); b.type = 'button'; b.dataset.id = r.id; b.setAttribute('role', 'listitem');
     b.style.setProperty('--c', r.color || COLORS[0][1]);
-    b.style.setProperty('--h', 138 + ((r.id.charCodeAt(0) + i * 7) % 5) * 5 + 'px');
-    b.style.setProperty('--i', i);
+    b.style.setProperty('--h', 136 + ((r.id.charCodeAt(0) + i * 7) % 4) * 3 + 'px');
     b.setAttribute('aria-label', `${r.title}. Carta del cajón ${folderOf(r)}. Mostrar de frente`);
     b.classList.toggle('hit', !!needle);
     b.classList.toggle('on', R.activeId() === r.id);
-    b.append(el('span', 'sp-t', r.title || 'Sin título'));
+    b.title = r.title || 'Sin título';
     const dot = el('i', 'act'); dot.innerHTML = icon('check'); dot.setAttribute('aria-hidden', 'true'); b.append(dot);
     b.addEventListener('click', () => setFeat(featId === r.id ? null : r.id, b));
+    const say = () => { const hv = $('#cj-hover'); hv.textContent = ''; hv.append(el('b', '', r.title || 'Sin título'), document.createTextNode(` · ${folderOf(r)}`)); };
+    b.addEventListener('pointerenter', say); b.addEventListener('focus', say);
     return b;
   }
   const markFeat = () => tray.querySelectorAll('.spine').forEach((s) => s.classList.toggle('out', s.dataset.id === featId));
+
+ // flechas para recorrer las hojas con el teclado
+  tray.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    const all = [...tray.querySelectorAll('.spine')], i = all.indexOf(document.activeElement);
+    if (i < 0) return;
+    e.preventDefault(); all[Math.max(0, Math.min(all.length - 1, i + (e.key === 'ArrowRight' ? 1 : -1)))].focus();
+  });
+  tray.addEventListener('pointerleave', () => { $('#cj-hover').textContent = ''; });
 
   /* ------------------------------------------------------------------ */
   /* La carta de frente                                                  */
