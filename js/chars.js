@@ -35,5 +35,5 @@ export const isSupported = (c) => SET.has(c);
 // Etiqueta corta para humanos
 export function pageLabel(p) {
   const cs = TEMPLATE_PAGES[p];
-  return `${cs[0]} … ${cs[cs.length - 1]}`;
+  return `${cs[0]} – ${cs[cs.length - 1]}`;
 }

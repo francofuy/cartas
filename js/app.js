@@ -6,6 +6,8 @@ import { PAPER_PRESETS } from './paper.js';
 import { TEMPLATE_PAGES, CHAR_GROUPS, ALL_CHARS, pageLabel } from './chars.js';
 import { loadPhoto, detectMarkers, defaultCorners, warpPage, detectPageCode, extractGlyphs } from './capture.js';
 import { printLetter, printTemplates } from './print.js';
+import { icon, hydrateIcons } from './icons.js';
+import { drawWordmark } from './wordmark.js';
 
 /* ------------------------------------------------------------------ */
 /* Ajustes y almacenamiento simple                                     */
@@ -14,13 +16,20 @@ const LS = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sin espacio o bloqueado */ } },
 };
+const SS = {
+  get(k) { try { return sessionStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { sessionStorage.setItem(k, v); } catch { /* nada */ } },
+};
+
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const DEFAULTS = {
   instrument: 'ballpoint', color: INSTRUMENTS.ballpoint.color, colorCustom: false,
   thickness: INSTRUMENTS.ballpoint.thickness, pressure: INSTRUMENTS.ballpoint.pressure,
   size: 1, letterSpacing: 0, wordSpacing: 0.8, imperfection: 0.7,
   paper: { ...PAPER_PRESETS.rayado },
-  animate: true, speed: 1, source: 'auto', seed: 1 + Math.floor(Math.random() * 1e6),
+  // si el sistema pide reducir el movimiento, la escritura animada arranca apagada
+  animate: !reduceMotion(), speed: 1, source: 'auto', seed: 1 + Math.floor(Math.random() * 1e6),
   noteSize: 17,
 };
 function loadSettings() {
@@ -40,7 +49,9 @@ const LAYOUT_KEYS = new Set(['size', 'letterSpacing', 'wordSpacing', 'imperfecti
 const lib = new HandLibrary();
 let writer = null;
 let zoom = 1;
-const isMobile = () => matchMedia('(max-width: 759px)').matches;
+let fitMode = LS.get('pyl.fit', 'width');
+const isMobile = () => matchMedia('(max-width: 899px)').matches; // "compacto": celular y tablet vertical
+const isTouch = () => matchMedia('(pointer: coarse)').matches;
 
 function toast(msg, ms = 3600) {
   const t = $('#toast');
@@ -66,7 +77,10 @@ async function reloadGlyphs() {
   clearSpriteCache();
   if (writer) { writer.relayout(); writer.schedule(); writer.emit(); }
   renderCoverage();
+  renderPages();
   renderHandStatus();
+  updateNotice();
+  refreshWordmark(false);
 }
 
 /* ------------------------------------------------------------------ */
@@ -78,26 +92,24 @@ const LINE_COLORS = [['Azul', '#86a9d6'], ['Azul oscuro', '#5d82b8'], ['Beige', 
 
 function buildSwatches(host, list, getVal, onPick) {
   host.innerHTML = '';
-  host.setAttribute('role', 'radiogroup');
   const mk = (name, color) => {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'sw'; b.style.background = color; b.title = name; b.setAttribute('aria-label', name);
-    b.setAttribute('role', 'radio');
     b.dataset.color = color;
     b.addEventListener('click', () => { onPick(color, false); refresh(); });
     return b;
   };
   list.forEach(([n, c]) => host.append(mk(n, c)));
   const cu = document.createElement('label');
-  cu.className = 'sw custom'; cu.title = 'Otro color'; cu.setAttribute('role', 'radio');
+  cu.className = 'sw custom'; cu.title = 'Otro color';
   const inp = document.createElement('input'); inp.type = 'color'; inp.setAttribute('aria-label', 'Elegir otro color');
   inp.addEventListener('input', () => { onPick(inp.value, true); refresh(); });
   cu.append(inp); host.append(cu);
   function refresh() {
     const v = getVal().toLowerCase();
     let found = false;
-    $$('.sw[data-color]', host).forEach((b) => { const on = b.dataset.color.toLowerCase() === v; b.setAttribute('aria-checked', on); if (on) found = true; });
-    cu.setAttribute('aria-checked', !found);
+    $$('.sw[data-color]', host).forEach((b) => { const on = b.dataset.color.toLowerCase() === v; b.setAttribute('aria-pressed', on); if (on) found = true; });
+    cu.classList.toggle('on', !found);
     if (!found) inp.value = v;
   }
   host._refresh = refresh;
@@ -108,11 +120,11 @@ function buildChips(host, items, getVal, onPick) {
   host.innerHTML = '';
   for (const [key, label] of items) {
     const b = document.createElement('button');
-    b.type = 'button'; b.className = 'chip'; b.textContent = label; b.dataset.key = key; b.setAttribute('role', 'radio');
+    b.type = 'button'; b.className = 'chip'; b.textContent = label; b.dataset.key = key;
     b.addEventListener('click', () => { onPick(key); refresh(); });
     host.append(b);
   }
-  function refresh() { $$('.chip', host).forEach((b) => b.setAttribute('aria-checked', b.dataset.key === getVal())); }
+  function refresh() { $$('.chip', host).forEach((b) => b.setAttribute('aria-pressed', b.dataset.key === getVal())); }
   host._refresh = refresh;
   refresh();
 }
@@ -124,12 +136,78 @@ function settingChanged(path) {
   writer.schedule();
 }
 
+/* valores visibles junto a cada deslizador (con coma decimal) */
+const fmt = (n, d = 1) => n.toFixed(d).replace('.', ',');
+const pct = (v) => `${Math.round(v * 100)} %`;
+const FORMAT = {
+  thickness: (v) => `${v > 0 ? '+' : ''}${Math.round(v * 100)} %`,
+  pressure: pct,
+  size: (v) => `×${fmt(v, 2)}`,
+  letterSpacing: (v) => `${fmt(v)} mm`,
+  wordSpacing: (v) => `${fmt(v)} mm`,
+  imperfection: pct,
+  speed: (v) => `×${fmt(v)}`,
+  'paper.lineSpacing': (v) => `${fmt(v)} mm`,
+  'paper.grain': pct,
+};
+function defaultFor(path) {
+  if (path === 'thickness') return INSTRUMENTS[S.instrument].thickness;
+  if (path === 'pressure') return INSTRUMENTS[S.instrument].pressure;
+  if (path === 'paper.lineSpacing') return PAPER_PRESETS[S.paper.type].lineSpacing;
+  return getPath(DEFAULTS, path);
+}
+
+function enhanceRanges() {
+  $$('label.field.range').forEach((lab) => {
+    const input = $('input[type="range"]', lab);
+    const lbl = $('.lbl', lab);
+    const row = document.createElement('div');
+    row.className = 'lbl-row';
+    const out = document.createElement('output');
+    out.className = 'val';
+    row.append(lbl, out);
+    lab.prepend(row);
+    input._out = out;
+    // doble clic o doble toque: vuelve al valor de fábrica
+    input.addEventListener('dblclick', () => {
+      const path = input.dataset.s;
+      setPath(S, path, defaultFor(path));
+      syncControls(); settingChanged(path);
+    });
+  });
+}
+
 function syncControls() {
   $$('[data-s]').forEach((el) => {
     const v = getPath(S, el.dataset.s);
     if (el.type === 'checkbox') el.checked = !!v; else el.value = v;
+    if (el._out) el._out.textContent = (FORMAT[el.dataset.s] || String)(parseFloat(el.value));
   });
   ['#inst-chips', '#paper-chips', '#source-chips', '#ink-swatches', '#paper-swatches', '#line-swatches'].forEach((id) => $(id)._refresh?.());
+}
+
+function setupResets() {
+  $$('[data-reset]').forEach((b) => b.addEventListener('click', () => {
+    if (b.dataset.reset === 'pen') {
+      const d = INSTRUMENTS[S.instrument];
+      Object.assign(S, { thickness: d.thickness, pressure: d.pressure, color: d.color, colorCustom: false });
+    } else {
+      Object.assign(S, { size: DEFAULTS.size, letterSpacing: DEFAULTS.letterSpacing, wordSpacing: DEFAULTS.wordSpacing, imperfection: DEFAULTS.imperfection, speed: DEFAULTS.speed, animate: DEFAULTS.animate });
+    }
+    syncControls(); settingChanged('size'); writer.relayout();
+    toast('Valores restablecidos.', 1800);
+  }));
+}
+
+/* panel lateral de tablet horizontal: pestañas Nota | Ajustes */
+function setupSideSwitch() {
+  const view = $('#view-write');
+  const set = (side) => {
+    view.dataset.side = side;
+    $$('.side-switch button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.side === side));
+  };
+  $$('.side-switch button').forEach((b) => b.addEventListener('click', () => set(b.dataset.side)));
+  set(view.dataset.side || 'note');
 }
 
 function buildControls() {
@@ -152,15 +230,20 @@ function buildControls() {
     S.source = k; applySource(); clearSpriteCache(); renderHandStatus(); settingChanged('source'); writer.relayout();
   });
 
+  enhanceRanges();
   $$('[data-s]').forEach((el) => {
     el.addEventListener('input', () => {
       const path = el.dataset.s;
       const v = el.type === 'checkbox' ? el.checked : el.type === 'range' ? parseFloat(el.value) : el.value;
       setPath(S, path, v);
+      if (el._out) el._out.textContent = (FORMAT[path] || String)(v);
       settingChanged(path);
     });
   });
   syncControls();
+  setupResets();
+  setupSideSwitch();
+  $('#motion-hint').hidden = !(reduceMotion() && !S.animate);
 }
 
 function renderHandStatus() {
@@ -182,16 +265,19 @@ function fit() {
   const availW = sc.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
   const availH = sc.clientHeight - parseFloat(cs.paddingTop) - 28;
   if (availW < 80 || availH < 80) return;
-  const base = isMobile() ? availW : Math.min(availW, (availH * 210) / 297);
+  // por defecto la hoja usa todo el ancho (hasta 760 px) para que la letra se lea; "Hoja entera" la ajusta a la altura
+  const base = isMobile() ? availW : fitMode === 'page' ? Math.min(availW, (availH * 210) / 297) : Math.min(availW, 760);
   const w = Math.round(base * zoom);
   if (Math.abs(w - writer.cssW) > 1) writer.resize(w);
 }
 
 function updatePager(info) {
-  $('#pg-label').textContent = `Hoja ${info.page + 1} de ${info.pages}`;
+  $('#pg-label').innerHTML = `<span class="long">Hoja ${info.page + 1} de ${info.pages}</span><span class="short" aria-hidden="true">${info.page + 1}/${info.pages}</span>`;
+  $('#pg-label').setAttribute('aria-label', `Hoja ${info.page + 1} de ${info.pages}`);
   $('#pg-prev').disabled = info.page <= 0;
   $('#pg-next').disabled = info.page >= info.pages - 1;
   $('#empty-hint').hidden = info.text.length > 0;
+  $('#empty-hint').textContent = isTouch() ? 'Tocá la hoja y empezá a escribir' : 'Hacé clic en la hoja y empezá a escribir';
   const hs = $('#hand-status');
   if (info.missing.length && lib.useMine) {
     hs.dataset.missing = info.missing.join('');
@@ -240,8 +326,14 @@ function setupInput() {
   document.addEventListener('selectionchange', () => {
     if (document.activeElement === cap && cap.value === writer.text) writer.setCaret(cap.selectionStart);
   });
-  cap.addEventListener('focus', () => { writer.focused = true; writer.blinkOn = true; writer.schedule(); });
+  cap.addEventListener('focus', () => {
+    if (cap.value === writer.text) cap.setSelectionRange(writer.caret, writer.caret);
+    writer.focused = true; writer.blinkOn = true; writer.schedule();
+  });
   cap.addEventListener('blur', () => { writer.focused = false; writer.schedule(); });
+  // el anillo de foco de la hoja solo aparece si se llegó con el teclado
+  document.addEventListener('keydown', (e) => { if (e.key === 'Tab') document.body.dataset.kbd = '1'; });
+  document.addEventListener('pointerdown', () => { delete document.body.dataset.kbd; });
 
   $('#sheet').addEventListener('click', (e) => {
     const k = writer.hit(e.clientX, e.clientY);
@@ -251,6 +343,7 @@ function setupInput() {
     writer.setCaret(k);
     if (isMobile()) closeDrawers();
   });
+  $('#skip-sheet').addEventListener('click', (e) => { e.preventDefault(); if (cap.value !== writer.text) syncCap(); cap.focus(); });
   $('#stage').addEventListener('pointerdown', (e) => { if (isMobile() && !e.target.closest('#sheet')) closeDrawers(); });
   syncCap();
 }
@@ -272,7 +365,9 @@ function toggleDrawer(id) {
   if (open) $('#cap').blur();
 }
 
+let viewReady = false;
 function setView(v) {
+  const changed = document.body.dataset.view !== v;
   document.body.dataset.view = v;
   $$('.tab').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === v));
   $('#view-write').hidden = v !== 'write';
@@ -280,6 +375,26 @@ function setView(v) {
   $('#btn-print').hidden = v !== 'write' || isMobile();
   if (v === 'write') requestAnimationFrame(fit);
   closeDrawers();
+  if (viewReady && changed) { // fundido corto, solo al cambiar de sección
+    const el = $('#view-' + v);
+    el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter');
+  }
+}
+
+/* confirmación propia (los confirm() del navegador están bloqueados en algunos entornos) */
+function ask(title, text, okLabel = 'Aceptar', danger = false) {
+  return new Promise((resolve) => {
+    const dlg = $('#confirmdlg');
+    $('#confirm-title').textContent = title;
+    $('#confirm-text').textContent = text;
+    const ok = $('#confirm-ok');
+    ok.textContent = okLabel;
+    ok.classList.toggle('primary', !danger);
+    ok.classList.toggle('danger', danger);
+    dlg.returnValue = '';
+    dlg.addEventListener('close', () => resolve(dlg.returnValue === 'ok'), { once: true });
+    dlg.showModal();
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -290,7 +405,10 @@ function setupNote() {
   ta.value = LS.get('pyl.note', '');
   ta.style.fontSize = S.noteSize + 'px';
   ta.addEventListener('input', debounce(() => LS.set('pyl.note', ta.value), 300));
-  $('#note-clear').addEventListener('click', () => { if (!ta.value || confirm('¿Borrar la nota de referencia?')) { ta.value = ''; LS.set('pyl.note', ''); } });
+  $('#note-clear').addEventListener('click', async () => {
+    if (ta.value && !(await ask('¿Borrar la nota de referencia?', 'El texto de la nota se pierde. La carta de la hoja no se toca.', 'Borrar nota', true))) return;
+    ta.value = ''; LS.set('pyl.note', '');
+  });
   const sz = (d) => { S.noteSize = clamp(S.noteSize + d, 13, 28); ta.style.fontSize = S.noteSize + 'px'; saveSettings(); };
   $('#note-smaller').addEventListener('click', () => sz(-1));
   $('#note-bigger').addEventListener('click', () => sz(1));
@@ -311,8 +429,11 @@ function renderVersions() {
     const sm = document.createElement('small'); sm.textContent = new Date(v.ts).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' }) + ` · ${v.text.length} caracteres`;
     t.append(b, sm);
     const open = document.createElement('button'); open.type = 'button'; open.className = 'btn'; open.textContent = 'Abrir';
-    open.addEventListener('click', () => {
-      if (writer.text && writer.text !== v.text && !confirm('Se reemplaza el texto actual por esta versión. ¿Seguimos?')) return;
+    open.addEventListener('click', async () => {
+      if (writer.text && writer.text !== v.text) {
+        $('#versions').close();
+        if (!(await ask('¿Reemplazar la carta actual?', 'Se abre esta versión y el texto de la hoja se reemplaza. Si querés conservarlo, guardalo antes como versión.', 'Abrir versión'))) return;
+      }
       writer.setText(v.text); writer._syncCap(); persistDraft();
       $('#versions').close();
     });
@@ -368,16 +489,29 @@ async function runTemplatePrint(pages) {
   if (res === 'blocked') toast('Este entorno no deja abrir la impresión. Abrí la app directamente en el navegador para imprimir.', 6500);
 }
 
-function buildTemplateGrid() {
-  const g = $('#tpl-grid');
-  g.innerHTML = '';
-  TEMPLATE_PAGES.forEach((_, p) => {
-    const d = document.createElement('div'); d.className = 'tpl';
-    d.innerHTML = `<b>Página ${p + 1}</b><small>${pageLabel(p)}</small>`;
-    const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Imprimir';
+// Lista de páginas de la plantilla, con cuántos caracteres de cada una ya cargaste
+function renderPages() {
+  const ul = $('#pages-list');
+  if (!ul) return;
+  ul.innerHTML = '';
+  TEMPLATE_PAGES.forEach((chars, p) => {
+    const have = chars.filter((c) => lib.mineCount(c) > 0).length;
+    const done = have === chars.length;
+    const li = document.createElement('li');
+    const name = document.createElement('span'); name.className = 'pg-name'; name.textContent = `Página ${p + 1}`;
+    const range = document.createElement('span'); range.className = 'pg-range'; range.textContent = pageLabel(p);
+    const st = document.createElement('span'); st.className = 'pg-status' + (done ? ' done' : '');
+    st.innerHTML = (done ? icon('check') : '') + `<span>${have} de ${chars.length}</span>`;
+    const b = document.createElement('button'); b.className = 'btn sm'; b.textContent = 'Imprimir página';
+    b.setAttribute('aria-label', `Imprimir página ${p + 1}`);
     b.addEventListener('click', () => runTemplatePrint([p]));
-    d.append(b); g.append(d);
+    li.append(name, range, st, b);
+    ul.append(li);
   });
+}
+
+function buildTemplateGrid() {
+  renderPages();
   $('#tpl-all').addEventListener('click', () => runTemplatePrint(TEMPLATE_PAGES.map((_, i) => i)));
 }
 
@@ -420,7 +554,7 @@ async function showVariants(ch) {
     const id = new ImageData(g.w, g.h);
     for (let i = 0; i < g.alpha.length; i++) { id.data[i * 4] = 20; id.data[i * 4 + 1] = 24; id.data[i * 4 + 2] = 60; id.data[i * 4 + 3] = g.alpha[i]; }
     c.getContext('2d').putImageData(id, 0, 0);
-    const x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.title = 'Borrar esta variante'; x.setAttribute('aria-label', 'Borrar esta variante');
+    const x = document.createElement('button'); x.type = 'button'; x.innerHTML = icon('close'); x.title = 'Borrar esta variante'; x.setAttribute('aria-label', 'Borrar esta variante');
     x.addEventListener('click', async () => { await DB.deleteGlyph(g.dbId); d.remove(); await reloadGlyphs(); });
     d.append(c, x); host.append(d);
   }
@@ -465,27 +599,30 @@ function reviewPhoto(canvas, pts, autoFound) {
       }
     };
     const pos = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * (w / r.width), (e.clientY - r.top) * (h / r.height)]; };
+    let activeId = null;
     const down = (e) => {
+      if (drag >= 0) return; // un segundo dedo no le saca el punto al primero
       const [x, y] = pos(e);
       let best = -1, bd = 40 * 40;
       P.forEach(([px, py], i) => { const d = (px - x) ** 2 + (py - y) ** 2; if (d < bd) { bd = d; best = i; } });
-      if (best >= 0) { drag = best; cv.setPointerCapture(e.pointerId); warped = null; draw(); e.preventDefault(); }
+      if (best >= 0) { drag = best; activeId = e.pointerId; cv.setPointerCapture(e.pointerId); warped = null; draw(); e.preventDefault(); }
     };
-    const move = (e) => { if (drag < 0) return; const [x, y] = pos(e); P[drag] = [clamp(x, 0, w), clamp(y, 0, h)]; draw(); };
-    const up = () => { drag = -1; draw(); };
-    cv.onpointerdown = down; cv.onpointermove = move; cv.onpointerup = up; cv.onpointercancel = up;
+    const move = (e) => { if (drag < 0 || e.pointerId !== activeId) return; const [x, y] = pos(e); P[drag] = [clamp(x, 0, w), clamp(y, 0, h)]; draw(); };
+    const up = (e) => { if (e && e.pointerId !== undefined && e.pointerId !== activeId) return; drag = -1; activeId = null; draw(); };
+    cv.onpointerdown = down; cv.onpointermove = move; cv.onpointerup = up; cv.onpointercancel = up; cv.onlostpointercapture = up;
     draw();
 
     const go = $('#review-go');
     const cancel = $('#review-cancel');
     let working = false;
-    const finish = (val) => { go.onclick = null; cancel.onclick = null; dlg.onclose = null; resolve(val); };
-    cancel.onclick = () => { if (!working) { dlg.close(); finish(null); } else cancel.blur(); };
+    const finish = (val) => { go.onclick = null; cancel.onclick = null; dlg.onclose = null; dlg.oncancel = null; cancel.disabled = false; resolve(val); };
+    cancel.onclick = () => { if (!working) { dlg.close(); finish(null); } };
+    dlg.oncancel = (e) => { if (working) e.preventDefault(); }; // Escape no interrumpe el procesamiento
     dlg.onclose = () => finish(null);
     go.onclick = async (e) => {
       e.preventDefault();
       if (working) return;
-      working = true; go.disabled = true;
+      working = true; go.disabled = true; cancel.disabled = true;
       try {
         const real = P.map(([x, y]) => [x / sc, y / sc]);
         const forced = parseInt(sel.value, 10);
@@ -507,7 +644,7 @@ function reviewPhoto(canvas, pts, autoFound) {
       } catch (err) {
         console.error(err);
         msg.textContent = 'Algo salió mal al procesar esta foto. Probá ajustar las esquinas o sacar otra foto.';
-      } finally { working = false; go.disabled = false; }
+      } finally { working = false; go.disabled = false; cancel.disabled = false; }
     };
     dlg.showModal();
   });
@@ -552,7 +689,7 @@ function setupHand() {
     catch (err) { console.error(err); toast(err.message || 'No pude importar ese archivo.'); }
   });
   $('#hand-clear').addEventListener('click', async () => {
-    if (!confirm('Se borra toda tu letra guardada en este dispositivo. ¿Seguro?')) return;
+    if (!(await ask('¿Borrar toda tu letra?', 'Se borran las letras guardadas en este dispositivo. Si no exportaste tu letra, para recuperarla vas a tener que fotografiar las plantillas de nuevo.', 'Borrar mi letra', true))) return;
     await DB.clearGlyphs(); await reloadGlyphs(); toast('Listo, borré tu letra.');
   });
   // arrastrar y soltar fotos
@@ -568,7 +705,26 @@ function setupHand() {
 /* ------------------------------------------------------------------ */
 /* Arranque                                                            */
 /* ------------------------------------------------------------------ */
+/* aviso fijo mientras se use la letra de ejemplo */
+function updateNotice() {
+  const show = !lib.hasMine() && !LS.get('pyl.noticeHidden', false);
+  $('#demo-notice').hidden = !show;
+}
+function setupNotice() {
+  $('#notice-go').addEventListener('click', () => setView('hand'));
+  $('#notice-close').addEventListener('click', () => { LS.set('pyl.noticeHidden', true); updateNotice(); fit(); });
+  updateNotice();
+}
+
+/* el nombre, con tu letra */
+function refreshWordmark(animate = false) {
+  const c = $('#wordmark');
+  if (!c) return;
+  try { drawWordmark(c, lib, { animate }); } catch (e) { console.warn('wordmark', e); }
+}
+
 async function init() {
+  hydrateIcons();
   await loadDemoFont();
   try { lib.setMine(await DB.allGlyphs()); } catch (e) { console.warn(e); }
   applySource();
@@ -584,8 +740,8 @@ async function init() {
   renderCoverage();
   renderHandStatus();
 
-  $('#btn-new').addEventListener('click', () => {
-    if (writer.text.trim() && !confirm('¿Empezar una carta nueva? Se descarta el borrador actual (si querés conservarlo, antes guardalo como versión).')) return;
+  $('#btn-new').addEventListener('click', async () => {
+    if (writer.text.trim() && !(await ask('¿Empezar una carta nueva?', 'Se descarta el borrador actual. Si querés conservarlo, guardalo antes como versión.', 'Empezar carta nueva', true))) return;
     S.seed = 1 + Math.floor(Math.random() * 1e6); saveSettings();
     writer.setText(''); writer._syncCap(); persistDraft();
     if (!isMobile()) $('#cap').focus({ preventScroll: true });
@@ -594,7 +750,9 @@ async function init() {
   $('#pg-next').addEventListener('click', () => writer.setPage(writer.page + 1));
   $('#z-in').addEventListener('click', () => { zoom = clamp(zoom * 1.2, 0.6, 3.2); fit(); });
   $('#z-out').addEventListener('click', () => { zoom = clamp(zoom / 1.2, 0.6, 3.2); fit(); });
-  $('#z-fit').addEventListener('click', () => { zoom = 1; fit(); $('#scroller').scrollTo({ top: 0 }); });
+  const fitLabel = () => { $('#z-fit').textContent = fitMode === 'page' ? 'Ancho completo' : 'Hoja entera'; $('#z-fit').setAttribute('aria-label', fitMode === 'page' ? 'Ver la hoja a todo el ancho' : 'Ver la hoja entera'); };
+  fitLabel();
+  $('#z-fit').addEventListener('click', () => { fitMode = fitMode === 'page' ? 'width' : 'page'; LS.set('pyl.fit', fitMode); zoom = 1; fitLabel(); fit(); $('#scroller').scrollTo({ top: 0 }); });
   $$('.tab').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
   $$('.dock-btn[data-drawer]').forEach((b) => b.addEventListener('click', () => toggleDrawer(b.dataset.drawer)));
 
@@ -617,7 +775,11 @@ async function init() {
   document.addEventListener('visibilitychange', () => { if (document.hidden) LS.set('pyl.draft', { text: writer.text }); });
 
   if (!isMobile()) $('#cap').focus({ preventScroll: true });
-  if (!lib.hasMine()) setTimeout(() => toast('Estás escribiendo con una letra de ejemplo. Cargá la tuya en “Mi letra”.', 6000), 1200);
+  setupNotice();
+  refreshWordmark(!reduceMotion() && !SS.get('pyl.wm'));
+  SS.set('pyl.wm', '1');
+  viewReady = true;
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => refreshWordmark(false));
 
   window.__pyl = { writer, lib, get S() { return S; }, reloadGlyphs, setView };
 

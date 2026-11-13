@@ -1,10 +1,12 @@
 // Service worker: deja la app disponible sin conexión.
-const CACHE = 'puno-y-letra-v1';
+const CACHE = 'puno-y-letra-v2';
 const ASSETS = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
-  'js/app.js', 'js/capture.js', 'js/chars.js', 'js/db.js', 'js/glyphs.js', 'js/layout.js', 'js/paper.js',
-  'js/print.js', 'js/skeleton.js', 'js/template.js', 'js/util.js', 'js/writer.js',
-  'fonts/caveat-500.woff2', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
+  'js/app.js', 'js/capture.js', 'js/chars.js', 'js/db.js', 'js/glyphs.js', 'js/icons.js', 'js/layout.js', 'js/paper.js',
+  'js/print.js', 'js/skeleton.js', 'js/template.js', 'js/util.js', 'js/wordmark.js', 'js/writer.js',
+  'fonts/caveat-500.woff2', 'fonts/figtree-latin-400-normal.woff2', 'fonts/figtree-latin-500-normal.woff2', 'fonts/figtree-latin-600-normal.woff2',
+  'fonts/newsreader-latin-400-normal.woff2', 'fonts/newsreader-latin-600-normal.woff2',
+  'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
 ];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
