@@ -58,7 +58,7 @@ export function setupCajon(h, R) {
   function spine(r, i, needle) {
     const b = el('button', 'spine'); b.type = 'button'; b.dataset.id = r.id; b.setAttribute('role', 'listitem');
     b.style.setProperty('--c', r.color || COLORS[0][1]);
-    b.style.setProperty('--h', 136 + ((r.id.charCodeAt(0) + i * 7) % 4) * 3 + 'px');
+    b.style.setProperty('--h', 50 + ((r.id.charCodeAt(0) + i * 7) % 4) * 2 + 'px');
     b.setAttribute('aria-label', `${r.title}. Carta del cajón ${folderOf(r)}. Mostrar de frente`);
     b.classList.toggle('hit', !!needle);
     b.classList.toggle('on', R.activeId() === r.id);

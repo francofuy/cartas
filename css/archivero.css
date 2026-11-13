@@ -28,10 +28,10 @@
 .cj-hover b { font-weight: 600; }
 
 /* la bandeja: hojas finas paradas y bien juntas, como en un organizador */
-.cj-tray { display: flex; align-items: flex-end; height: 168px; padding: 20px 12px 0; overflow-x: auto; overflow-y: hidden; border-radius: calc(var(--r) * .6) calc(var(--r) * .6) 0 0; background: linear-gradient(180deg, rgb(28 28 80 / .5), rgb(28 28 80 / .3)); box-shadow: inset 0 8px 12px -6px rgb(0 0 0 / .45), inset 0 0 0 1px rgb(0 0 0 / .2); }
+.cj-tray { display: flex; align-items: flex-end; height: 78px; padding: 16px 12px 0; overflow-x: auto; overflow-y: hidden; border-radius: calc(var(--r) * .6) calc(var(--r) * .6) 0 0; background: linear-gradient(180deg, rgb(28 28 80 / .5), rgb(28 28 80 / .3)); box-shadow: inset 0 8px 12px -6px rgb(0 0 0 / .45), inset 0 0 0 1px rgb(0 0 0 / .2); }
 .cj-empty { align-self: center; margin: 0 auto; text-align: center; font-size: .9em; padding: 0 20px; }
 .spine {
-  position: relative; flex: none; width: 8px; height: var(--h, 140px); padding: 0; border: 0; cursor: pointer; border-radius: 1px 1px 0 0;
+  position: relative; flex: none; width: 8px; height: var(--h, 56px); padding: 0; border: 0; cursor: pointer; border-radius: 1px 1px 0 0;
   background: linear-gradient(90deg, rgb(255 255 255 / .35), rgb(255 255 255 / 0) 45%, rgb(0 0 0 / .08)), var(--c);
   /* contorno oscuro: se distingue sea cual sea el color de la hoja y del fondo */
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, #000), inset 0 2px 0 color-mix(in srgb, var(--c) 60%, #000), 0 6px 8px -5px rgb(0 0 0 / .5);
@@ -43,7 +43,7 @@
 .spine .act svg { display: none; }
 .spine.on .act { display: block; }
 .spine.hit { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, #000), 0 0 0 2px var(--accent); }
-.spine:hover, .spine:focus-visible { transform: translateY(-14px); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, #000), inset 0 2px 0 color-mix(in srgb, var(--c) 60%, #000), 0 16px 14px -8px rgb(0 0 0 / .6); z-index: 2; }
+.spine:hover, .spine:focus-visible { transform: translateY(-10px); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, #000), inset 0 2px 0 color-mix(in srgb, var(--c) 60%, #000), 0 16px 14px -8px rgb(0 0 0 / .6); z-index: 2; }
 .spine:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .spine.out { opacity: .15; transform: translateY(6px); }
 .spine.out:hover { transform: translateY(6px); }
@@ -51,7 +51,7 @@
 
 /* la carta elegida: se da vuelta y se muestra de frente sobre el cajón */
 .cj-feat { position: absolute; bottom: calc(100% + 12px); width: 244px; display: grid; gap: 8px; justify-items: center; z-index: 3; }
-.fc { position: relative; width: 244px; height: 316px; padding: 18px 18px 0; overflow: hidden; color: #2a2a32; border-radius: 3px 4px 2px 2px; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+.fc { position: relative; width: 244px; height: 268px; padding: 18px 18px 0; overflow: hidden; color: #2a2a32; border-radius: 3px 4px 2px 2px; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
   background: linear-gradient(135deg, rgb(255 255 255 / .55), rgb(255 255 255 / 0) 42%), var(--c);
   box-shadow: 1px 0 0 rgb(0 0 0 / .1), 4px 3px 0 -1px color-mix(in srgb, var(--c) 80%, #000), 7px 6px 0 -2px color-mix(in srgb, var(--c) 68%, #000), 0 30px 36px -14px rgb(20 20 90 / .55);
   transform-origin: 0 100%; }
@@ -62,7 +62,7 @@
 .fc:active { cursor: grabbing; }
 .fc.lifted { opacity: .3; }
 .fc-t { position: relative; display: block; font: 700 15px/1.25 var(--font); padding-right: 26px; margin-bottom: 14px; }
-.fc-s { position: relative; margin: 0; font: 13.5px/20px var(--serif); white-space: pre-wrap; max-height: 224px; overflow: hidden; opacity: .85; -webkit-mask-image: linear-gradient(#000 80%, transparent); mask-image: linear-gradient(#000 80%, transparent); }
+.fc-s { position: relative; margin: 0; font: 13.5px/20px var(--serif); white-space: pre-wrap; max-height: 176px; overflow: hidden; opacity: .85; -webkit-mask-image: linear-gradient(#000 80%, transparent); mask-image: linear-gradient(#000 80%, transparent); }
 .fc-hint { position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; font-size: .72em; color: rgb(42 42 50 / .55); }
 .fc-x { position: absolute; right: 6px; top: 6px; color: #2a2a32; z-index: 2; }
 .fc-x:hover { background: rgb(0 0 0 / .08) !important; }
