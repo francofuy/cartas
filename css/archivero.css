@@ -166,6 +166,3 @@ body.noanim .drw.open .sht-w, body.noanim .peek-sheet.in { animation: none !impo
 /* sin barras de desplazamiento visibles (se sigue pudiendo desplazar) */
 * { scrollbar-width: none; -ms-overflow-style: none; }
 *::-webkit-scrollbar { display: none; width: 0; height: 0; }
-
-/* el aro de foco solo aparece al navegar con Tab, nunca al tocar o hacer clic */
-body:not([data-kbd]) :is(button, label, summary, a, .sht):focus-visible { outline: none !important; }

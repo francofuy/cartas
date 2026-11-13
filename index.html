@@ -27,11 +27,7 @@
 <div id="app">
 
   <header class="top">
-    <div class="brand">
-      <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20c2.2-.2 4.6-1.4 6.7-3.5l7.6-7.6a2.1 2.1 0 0 0-3-3L7.7 13.5C5.6 15.6 4.4 18 4 20Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m13.6 6.6 3.8 3.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      <canvas id="wordmark" aria-hidden="true"></canvas>
-      <span class="sr-only">Puño y Letra</span>
-    </div>
+    <div aria-hidden="true"></div>
     <nav class="seg g" id="seg" aria-label="Secciones">
       <i class="pill" aria-hidden="true"></i>
       <button class="tab" data-view="write" aria-pressed="true">Escribir</button>
@@ -56,7 +52,6 @@
         <button class="dock-btn" data-panel="writing" aria-label="Escritura" title="Escritura"><span data-icon="aa" class="ico"></span><span class="t">Escritura</span></button>
         <button class="dock-btn" data-panel="paper" aria-label="Papel" title="Papel"><span data-icon="paper" class="ico"></span><span class="t">Papel</span></button>
         <button class="dock-btn" data-panel="hand" aria-label="Letra" title="Letra"><span data-icon="hand" class="ico"></span><span class="t">Letra</span></button>
-        <button class="dock-btn" data-panel="look" aria-label="Aspecto" title="Aspecto"><span data-icon="palette" class="ico"></span><span class="t">Aspecto</span></button>
         <span class="dock-sep" aria-hidden="true"></span>
         <button class="dock-btn" data-panel="cab" aria-label="Archivero de cartas" title="Archivero de cartas"><span data-icon="cabinet" class="ico"></span><span class="t">Cartas</span></button>
         <button class="dock-btn" data-panel="note" aria-label="Nota o carta de referencia" title="Nota o carta de referencia"><span data-icon="note" class="ico"></span><span class="t">Nota</span></button>
@@ -116,26 +111,6 @@
           <h2>Letra</h2>
           <div class="chips" id="source-chips" role="group" aria-label="Qué letra usar"></div>
           <p class="hint" id="hand-status"></p>
-        </section>
-
-        <section class="sec" data-sec="look">
-          <h2>Aspecto</h2>
-          <div class="field"><span class="lbl" id="lbl-pal">Paleta</span><div class="chips" id="pal-chips" role="group" aria-labelledby="lbl-pal"></div></div>
-          <div class="field"><span class="lbl">Colores (tocá uno para cambiarlo)</span>
-            <div class="pickers" id="pickers"></div>
-          </div>
-          <div class="field"><span class="lbl" id="lbl-bgfx">Fondo</span><div class="chips" id="bg-chips" role="group" aria-labelledby="lbl-bgfx"></div></div>
-          <div class="field"><span class="lbl" id="lbl-mat">Vidrio</span><div class="chips" id="mat-chips" role="group" aria-labelledby="lbl-mat"></div></div>
-          <label class="field range"><span class="lbl">Aurora</span><input type="range" data-t="aurO" min="0" max="100" step="5"></label>
-          <label class="field range"><span class="lbl">Grano de papel</span><input type="range" data-t="grain" min="0" max="100" step="5"></label>
-          <label class="field range"><span class="lbl">Cuerpo del vidrio</span><input type="range" data-t="thick" min="0" max="100" step="5"></label>
-          <label class="field range"><span class="lbl">Desenfoque</span><input type="range" data-t="blur" min="0" max="30" step="1"></label>
-          <label class="field range"><span class="lbl">Esquinas</span><input type="range" data-t="radius" min="0" max="32" step="1"></label>
-          <label class="field range"><span class="lbl">Tamaño del texto</span><input type="range" data-t="fs" min="13" max="19" step="1"></label>
-          <label class="field toggle"><span class="lbl">Borde de luz</span><input type="checkbox" data-t="edge"></label>
-          <label class="field toggle" id="row-refract"><span class="lbl">Refracción <small class="muted">(solo Chrome y Edge)</small></span><input type="checkbox" data-t="refract"></label>
-          <label class="field toggle"><span class="lbl">Animaciones</span><input type="checkbox" data-t="anim"></label>
-          <button type="button" class="link-btn" id="look-reset">Volver a «Mi diseño»</button>
         </section>
       </div>
 
@@ -348,14 +323,6 @@
   </form>
 </dialog>
 
-<!-- refracción del vidrio (solo se usa en Chrome y Edge) -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-  <filter id="lens" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
-    <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="2" seed="4" result="n"/>
-    <feGaussianBlur in="n" stdDeviation="6" result="nb"/>
-    <feDisplacementMap in="SourceGraphic" in2="nb" scale="26" xChannelSelector="R" yChannelSelector="G"/>
-  </filter>
-</svg>
 
 <script type="module" src="js/app.js"></script>
 </body>

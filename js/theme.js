@@ -155,8 +155,7 @@ export class Background {
     const GAP = 26;
     for (let y = GAP / 2; y < h; y += GAP) {
       for (let x = GAP / 2; x < w; x += GAP) {
-        // detrás del título y la barra superior los puntos quedan quietos
-        const dd = y < 64 ? 999 : Math.hypot(x - this.mx, y - this.my), k = Math.max(0, 1 - dd / 130);
+        const dd = Math.hypot(x - this.mx, y - this.my), k = Math.max(0, 1 - dd / 130);
         ctx.globalAlpha = 0.28 + 0.72 * k;
         ctx.fillStyle = k > 0.02 ? accent : mut;
         ctx.beginPath(); ctx.arc(x, y, 1.5 + 4 * k, 0, 6.283); ctx.fill();
@@ -164,4 +163,10 @@ export class Background {
     }
     ctx.globalAlpha = 1;
   }
+}
+
+// relleno del deslizador de vidrio (--p = porcentaje)
+export function paintRange(input) {
+  const min = parseFloat(input.min || '0'), max = parseFloat(input.max || '100'), v = parseFloat(input.value);
+  input.style.setProperty('--p', (max > min ? ((v - min) / (max - min)) * 100 : 0) + '%');
 }

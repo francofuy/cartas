@@ -7,9 +7,7 @@ import { TEMPLATE_PAGES, CHAR_GROUPS, ALL_CHARS, pageLabel } from './chars.js';
 import { loadPhoto, detectMarkers, defaultCorners, warpPage, detectPageCode, extractGlyphs } from './capture.js';
 import { printLetter, printTemplates } from './print.js';
 import { icon, hydrateIcons } from './icons.js';
-import { drawWordmark } from './wordmark.js';
-import { loadTheme, applyTheme, Background } from './theme.js';
-import { setupLook, paintRange } from './look.js';
+import { DEFAULT_THEME, applyTheme, Background, paintRange } from './theme.js';
 import { setupRefs } from './refs.js';
 
 /* ------------------------------------------------------------------ */
@@ -93,7 +91,6 @@ async function reloadGlyphs() {
   renderPages();
   renderHandStatus();
   updateNotice();
-  refreshWordmark(false);
   refsApi?.refreshView();
 }
 
@@ -184,7 +181,6 @@ function enhanceRanges() {
     row.append(lbl, out);
     lab.prepend(row);
     input._out = out;
-    if (!input.dataset.s) return; // los del panel «Aspecto» los maneja look.js
     // doble clic o doble toque: vuelve al valor de fábrica
     input.addEventListener('dblclick', () => {
       const path = input.dataset.s;
@@ -858,13 +854,6 @@ function setupNotice() {
   updateNotice();
 }
 
-/* el nombre, con tu letra */
-function refreshWordmark(animate = false) {
-  const c = $('#wordmark');
-  if (!c) return;
-  try { drawWordmark(c, lib, { animate }); } catch (e) { console.warn('wordmark', e); }
-}
-
 /* nueva carta: mantener apretado ~1 s (E12). Con teclado, Enter o espacio piden confirmación. */
 let undoCarta = null;
 function setupNewLetter() {
@@ -919,11 +908,10 @@ function setupRipple() {
 
 let THEME = null, BG = null;
 function setupTheme() {
-  THEME = loadTheme();
-  const sync = () => document.body.classList.toggle('anim-on', THEME.anim && THEME.ripple !== false && !reduceMotion());
-  applyTheme(THEME); sync();
+  THEME = JSON.parse(JSON.stringify(DEFAULT_THEME)); // el diseño elegido
+  applyTheme(THEME);
+  document.body.classList.toggle('anim-on', THEME.anim && !reduceMotion());
   BG = new Background($('#dots'));
-  setupLook(THEME, () => { sync(); BG.draw(); refreshWordmark(false); refsApi?.refreshView(); });
 }
 
 async function init() {
@@ -988,10 +976,7 @@ async function init() {
 
   if (!isMobile()) $('#cap').focus({ preventScroll: true });
   setupNotice();
-  refreshWordmark(!reduceMotion() && !SS.get('pyl.wm'));
-  SS.set('pyl.wm', '1');
   viewReady = true;
-  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => refreshWordmark(false));
 
   window.__pyl = { writer, lib, get S() { return S; }, reloadGlyphs, setView, printJobs };
 

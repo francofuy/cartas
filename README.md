@@ -11,7 +11,7 @@ como app en PC y celular y funciona sin conexión. Tu letra y tus cartas se guar
    y sacale una foto. La app endereza la foto (con las 4 marcas negras), se queda solo con la tinta y guarda cada
    letra. Podés repetir tantas veces como quieras: cada foto suma variantes y el texto las alterna.
 2. **Escribir** → tipeá y la hoja se va "escribiendo" con tu letra (trazo animado con ritmo humano).
-   La barra de la izquierda abre cada ajuste: lapicera, escritura, papel, letra y aspecto de la app.
+   La barra de la izquierda abre cada ajuste: lapicera, escritura, papel y letra.
 3. **Hojas con dorso** → «Dar vuelta» gira la hoja y seguís en el dorso; «Hoja nueva» toma otra hoja del montón
    (sin dorso). Cuando una hoja se llena, la carta sigue en el dorso o en otra hoja, a tu elección.
 4. **Archivero** → guardá cartas de referencia en cajones, buscalas, miralas de cerca y arrastralas a la referencia.
@@ -25,7 +25,7 @@ como app en PC y celular y funciona sin conexión. Tu letra y tus cartas se guar
 index.html          interfaz
 css/app.css         estilos (vidrio, barra, vistas, diálogos); css/archivero.css: archivero 3D y referencia
 js/app.js           conecta todo
-js/theme.js         paletas, vidrio, fondo de puntos que reaccionan; js/look.js: panel «Aspecto»
+js/theme.js         paletas, vidrio, fondo de puntos que reaccionan
 js/writer.js        texto, ritmo de escritura, dibujo de la hoja y modo fantasma
 js/layout.js        renglones, caras (frente/dorso), hojas, imperfecciones deterministas
 js/refs.js          archivero de cartas, referencia (costado / flotante / fantasma), arrastre
