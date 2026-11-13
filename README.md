@@ -14,7 +14,7 @@ como app en PC y celular y funciona sin conexión. Tu letra y tus cartas se guar
    La barra de la izquierda abre cada ajuste: lapicera, escritura, papel y letra.
 3. **Hojas con dorso** → «Dar vuelta» gira la hoja y seguís en el dorso; «Hoja nueva» toma otra hoja del montón
    (sin dorso). Cuando una hoja se llena, la carta sigue en el dorso o en otra hoja, a tu elección.
-4. **Archivero** → un mueble de vidrio flotante en el fondo, con cajones por carpeta. Se recorre arrastrando el fondo; «Cartas» lo pone al frente. Sacás las cartas con el mouse (las apoyás en el escritorio, las devolvés al cajón o las soltás sobre la referencia), las buscás y las mirás de cerca.
+4. **Archivero** → un cajón en una esquina que se abre al pasar el cursor y muestra las cartas de lomo (por carpeta). Al hacer clic en una se muestra de frente para elegirla y arrastrarla a la referencia; también se buscan, se leen, se editan y se exportan o importan.
    La referencia se ve al costado, en una ventana flotante o «fantasma» sobre la hoja, con letra legible o con tu letra.
 5. **Imprimir** → se dibuja cada hoja a 300 ppp. Si hay hojas con dorso podés elegir doble cara automática,
    una cara por hoja, o doble cara a mano (el navegador no puede saber qué impresora tenés).
@@ -28,7 +28,7 @@ js/app.js           conecta todo
 js/theme.js         paletas, vidrio, fondo de puntos que reaccionan
 js/writer.js        texto, ritmo de escritura, dibujo de la hoja y modo fantasma
 js/layout.js        renglones, caras (frente/dorso), hojas, imperfecciones deterministas
-js/refs.js          datos de las cartas y referencia (costado / flotante / fantasma); js/mueble.js: el mueble del fondo
+js/refs.js          datos de las cartas y referencia (costado / flotante / fantasma); js/cajon.js: el cajón de la esquina
 js/glyphs.js        biblioteca de letras, lapiceras (sprites) y animación de trazo
 js/skeleton.js      esqueleto de cada letra -> orden en que se dibuja
 js/capture.js       foto -> homografía -> letras sueltas (solo tinta)

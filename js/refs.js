@@ -1,5 +1,5 @@
 // Datos de las cartas de referencia y la referencia en uso:
-// al costado, en una ventana flotante o «fantasma» sobre la hoja. El mueble que las guarda vive en js/mueble.js.
+// al costado, en una ventana flotante o «fantasma» sobre la hoja. El cajón que las guarda vive en js/cajon.js.
 import { $, $$, uid, debounce, hash } from './util.js';
 import * as DB from './db.js';
 import { layoutText } from './layout.js';
@@ -86,7 +86,7 @@ export function setupRefs(h) {
   }
 
   /* ------------------------------------------------------------------ */
-  /* Arrastrar una carta hasta la referencia (lo usa el mueble)          */
+  /* Arrastrar una carta hasta la referencia (lo usa el cajón)          */
   /* ------------------------------------------------------------------ */
   const mode = () => {
     const m = h.S().refMode === 'float' && h.isMobile() ? 'panel' : h.S().refMode;

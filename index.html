@@ -24,24 +24,36 @@
   <div class="grain"></div>
 </div>
 
-<!-- el archivero: un mueble que está en el fondo; se recorre arrastrando el fondo y se sacan las cartas con el mouse -->
-<div id="world" role="region" aria-label="Archivero de cartas">
-  <div id="cam">
-    <section id="mueble" class="mueble" aria-label="Mueble del archivero">
-      <label class="cab-search"><span class="sr-only">Buscar en las cartas</span><span data-icon="search" class="ico" aria-hidden="true"></span><input type="search" id="cab-q" placeholder="Buscar en las cartas…" autocomplete="off"></label>
-      <p class="cab-count muted" id="cab-count" aria-live="polite"></p>
-      <div class="mu-body" id="cabinet"></div>
-      <div class="mu-base">
+<!-- el archivero: un cajón en la esquina; se abre al pasar el cursor y muestra las cartas de lomo -->
+<section id="cajon" class="cajon" aria-label="Archivero de cartas">
+  <div class="cj-feat" id="cj-feat" hidden>
+    <article class="fc" id="fc" aria-label="Carta elegida">
+      <button class="icon-btn sm fc-x" id="fc-x" aria-label="Guardar la carta de nuevo en el cajón" data-icon="close"></button>
+      <b class="fc-t" id="fc-t"></b>
+      <p class="fc-s" id="fc-s"></p>
+      <span class="fc-hint">Arrastrala hasta la referencia</span>
+    </article>
+    <div class="fc-actions">
+      <button class="btn sm primary" id="fc-use">Usar como referencia</button>
+      <button class="btn sm" id="fc-open">Leer</button>
+      <button class="btn sm" id="fc-edit">Editar</button>
+    </div>
+  </div>
+  <div class="cj-box">
+    <button class="cj-handle" id="cj-handle" type="button" aria-expanded="false" aria-controls="cj-body">
+      <span class="knob" aria-hidden="true"></span><b>Cartas</b><span class="cnt" id="cab-count"></span>
+    </button>
+    <div class="cj-body" id="cj-body">
+      <div class="cj-tools">
+        <label class="cab-search"><span class="sr-only">Buscar en las cartas</span><span data-icon="search" class="ico" aria-hidden="true"></span><input type="search" id="cab-q" placeholder="Buscar…" autocomplete="off"></label>
         <button class="btn sm primary" id="cab-add">Nueva carta</button>
-        <span class="grow"></span>
         <button class="icon-btn sm" id="cab-export" aria-label="Exportar el archivero" title="Exportar el archivero" data-icon="download"></button>
         <label class="icon-btn sm file" title="Importar un archivero" aria-label="Importar un archivero"><span data-icon="upload" class="ico"></span><input type="file" id="cab-import" accept=".gz,.json,application/gzip,application/octet-stream" hidden></label>
       </div>
-      <i class="mu-foot l" aria-hidden="true"></i><i class="mu-foot r" aria-hidden="true"></i>
-    </section>
-    <div id="desk" class="desk"></div>
+      <div class="cj-tray" id="cabinet" role="list" aria-label="Cartas guardadas"></div>
+    </div>
   </div>
-</div>
+</section>
 
 <div id="app">
 

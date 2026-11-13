@@ -9,7 +9,7 @@ import { printLetter, printTemplates } from './print.js';
 import { icon, hydrateIcons } from './icons.js';
 import { DEFAULT_THEME, applyTheme, Background, paintRange } from './theme.js';
 import { setupRefs } from './refs.js';
-import { setupMueble } from './mueble.js';
+import { setupCajon } from './cajon.js';
 
 /* ------------------------------------------------------------------ */
 /* Ajustes y almacenamiento simple                                     */
@@ -368,11 +368,11 @@ function setupInput() {
 /* ------------------------------------------------------------------ */
 /* Cajones (celular) y vistas                                          */
 /* ------------------------------------------------------------------ */
-// Izquierda: ajustes (en #pop). Derecha: la referencia (nota o carta). El archivero es el mueble del fondo («Cartas» lo pone al frente).
+// Izquierda: ajustes (en #pop). Derecha: la referencia (nota o carta). El archivero es el cajón de la esquina («Cartas» lo deja abierto).
 let openPanel = null, noteOpen = false;
 function markDock() {
   $$('.dock-btn[data-panel]').forEach((b) => {
-    const on = b.dataset.panel === 'note' ? noteOpen : b.dataset.panel === 'cab' ? !!muebleApi?.isFocus() : b.dataset.panel === openPanel;
+    const on = b.dataset.panel === 'note' ? noteOpen : b.dataset.panel === 'cab' ? !!cajonApi?.isOpen() : b.dataset.panel === openPanel;
     b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
   });
 }
@@ -384,27 +384,26 @@ function setLeft(name) {
   if (sec) {
     [...sec.children].forEach((c, i) => c.style.setProperty('--i', i));
     void sec.offsetWidth; sec.classList.add('go');
-    muebleApi?.setFocus(false); // para ajustar la hoja hay que verla
   }
   pop.classList.toggle('open', !!sec);
   pop.setAttribute('aria-label', sec ? sec.querySelector('h2').textContent : 'Ajustes');
   $('#view-write').style.setProperty('--left-w', sec ? '376px' : '0px');
-  if (name && isMobile()) { $('#cap').blur(); setNote(false); }
+  if (name && isMobile()) { $('#cap').blur(); setNote(false); cajonApi?.close(); }
   markDock();
 }
 function setNote(open) {
   noteOpen = open;
   refsApi?.showNote(open);
-  if (open && isMobile()) { setLeft(null); $('#cap').blur(); }
+  if (open && isMobile()) { setLeft(null); cajonApi?.close(); $('#cap').blur(); }
   markDock();
 }
 function togglePanel(name) {
   if (name === 'note') setNote(!noteOpen);
-  else if (name === 'cab') { setLeft(null); muebleApi.setFocus(!muebleApi.isFocus()); if (isMobile()) setNote(false); }
+  else if (name === 'cab') { if (isMobile()) { setLeft(null); setNote(false); } cajonApi.toggle(); }
   else setLeft(openPanel === name ? null : name);
 }
 const closeDrawers = () => { setLeft(null); setNote(false); };
-let refsApi = null, muebleApi = null;
+let refsApi = null, cajonApi = null;
 
 /* ------------------------------------------------------------------ */
 /* Hojas: dar vuelta, tomar otra, cambiar de cara                      */
@@ -470,7 +469,7 @@ function setView(v) {
   $('#view-write').hidden = v !== 'write';
   $('#view-hand').hidden = v !== 'hand';
   $('#btn-print').hidden = v !== 'write';
-  if (v !== 'write') muebleApi?.setFocus(false);
+  if (v !== 'write') cajonApi?.close();
   if (v === 'write') requestAnimationFrame(fit);
   closeDrawers();
   if (viewReady && changed) { // fundido corto, solo al cambiar de sección
@@ -938,10 +937,10 @@ async function init() {
   setupNewLetter();
   refsApi = setupRefs({
     S: () => S, saveSettings, writer: () => writer, lib, toast, ask, isMobile, LS,
-    inFocus: () => !!muebleApi?.isFocus(), isNoteOpen: () => noteOpen, openNote: () => setNote(true), closeNote: () => setNote(false), syncControls,
+    inFocus: () => false, isNoteOpen: () => noteOpen, openNote: () => setNote(true), closeNote: () => setNote(false), syncControls,
     download: (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); },
   });
-  muebleApi = setupMueble({ LS, isMobile, onFocus: () => markDock() }, refsApi);
+  cajonApi = setupCajon({ isMobile, onChange: () => markDock() }, refsApi);
   $('#pg-prev').addEventListener('click', () => goPage(writer.page - 1));
   $('#pg-next').addEventListener('click', () => goPage(writer.page + 1));
   setupSheetOps();
@@ -955,7 +954,7 @@ async function init() {
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || document.querySelector('dialog[open]')) return;
     if (refsApi?.peekOpen()) return; // la vista de cerca maneja su propio Esc
-    if (muebleApi?.isFocus()) { muebleApi.setFocus(false); $('.dock-btn[data-panel="cab"]')?.focus(); return; }
+    if (cajonApi?.escape()) { $('.dock-btn[data-panel="cab"]')?.focus(); return; }
     if (openPanel) { const b = $(`.dock-btn[data-panel="${openPanel}"]`); setLeft(null); b?.focus(); }
     else if (noteOpen) { setNote(false); $('.dock-btn[data-panel="note"]')?.focus(); }
   });
