@@ -1,25 +1,24 @@
-// Archivero de cartas de referencia (mueble con cajones en 3D) y la referencia en uso:
-// al costado, en una ventana flotante o «fantasma» sobre la hoja.
+// Datos de las cartas de referencia y la referencia en uso:
+// al costado, en una ventana flotante o «fantasma» sobre la hoja. El mueble que las guarda vive en js/mueble.js.
 import { $, $$, uid, debounce, hash } from './util.js';
 import * as DB from './db.js';
 import { layoutText } from './layout.js';
 import { getSprite, PAD } from './glyphs.js';
-import { icon } from './icons.js';
 
-const COLORS = [['Crema', '#fff4d6'], ['Celeste', '#dcefff'], ['Rosa', '#ffe1ea'], ['Menta', '#ddf6e6'], ['Lila', '#ebe3fb'], ['Blanco', '#ffffff']];
-const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-const folderOf = (r) => (r.folder || '').trim() || 'Sueltas';
+export const COLORS = [['Crema', '#fff4d6'], ['Celeste', '#dcefff'], ['Rosa', '#ffe1ea'], ['Menta', '#ddf6e6'], ['Lila', '#ebe3fb'], ['Blanco', '#ffffff']];
+export const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+export const folderOf = (r) => (r.folder || '').trim() || 'Sueltas';
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const hexOf = (rgb) => { const m = rgb.match(/\d+(\.\d+)?/g); return m ? '#' + m.slice(0, 3).map((v) => Math.round(+v).toString(16).padStart(2, '0')).join('') : '#222222'; };
 
-// h = { S(), saveSettings(), writer(), lib, toast, ask, isMobile, LS, isNoteOpen(), openNote(), download(blob, name) }
+// h = { S(), saveSettings(), writer(), lib, toast, ask, isMobile, LS, isNoteOpen(), openNote(), closeNote(), syncControls(), download(blob, name), inFocus() }
 export function setupRefs(h) {
   let refs = [];
-  let q = '';
   let activeId = h.LS.get('pyl.activeRef', null);
   let peekId = null;
   let editingId = null;
-  const openDrawers = new Set(h.LS.get('pyl.cabOpen', []));
+  const subs = new Set();
+  const emit = () => subs.forEach((f) => f());
   const byId = (id) => refs.find((r) => r.id === id) || null;
   const active = () => byId(activeId);
 
@@ -36,7 +35,7 @@ export function setupRefs(h) {
     try { refs = await DB.allRefs(); } catch (e) { console.warn('No pude leer el archivero', e); refs = []; }
     refs.sort((a, b) => (b.ts || 0) - (a.ts || 0));
     if (activeId && !byId(activeId)) activeId = null;
-    render(); applyActive();
+    emit(); applyActive();
   }
   async function save(r) {
     r.ts = Date.now();
@@ -44,171 +43,90 @@ export function setupRefs(h) {
     const i = refs.findIndex((x) => x.id === r.id);
     if (i >= 0) refs[i] = r; else refs.unshift(r);
     refs.sort((a, b) => (b.ts || 0) - (a.ts || 0));
-    render();
+    emit();
     if (activeId === r.id) applyActive();
+  }
+  // dónde está apoyada una carta sobre el escritorio (null = dentro de su cajón); no cambia su fecha
+  async function setPos(id, pos) {
+    const r = byId(id); if (!r) return;
+    r.pos = pos;
+    try { await DB.putRef(r); } catch (e) { warnMemory(e); }
+    emit();
   }
   async function remove(id) {
     try { await DB.deleteRef(id); } catch (e) { warnMemory(e); }
     refs = refs.filter((r) => r.id !== id);
     if (activeId === id) { activeId = null; h.LS.set('pyl.activeRef', null); }
-    render(); applyActive();
+    emit(); applyActive();
   }
 
   /* ------------------------------------------------------------------ */
-  /* El mueble                                                           */
+  /* Ver de cerca                                                        */
   /* ------------------------------------------------------------------ */
-  function render() {
-    const host = $('#cabinet');
-    const needle = norm(q.trim());
-    const shown = refs.filter((r) => !needle || norm(`${r.title} ${folderOf(r)} ${r.text}`).includes(needle));
-    $('#cab-count').textContent = !refs.length ? '' : needle ? `${shown.length} de ${refs.length} cartas` : `${refs.length} ${refs.length === 1 ? 'carta' : 'cartas'}`;
-    host.innerHTML = '';
-    if (!refs.length) {
-      const e = el('div', 'cab-empty');
-      e.append(el('b', '', 'El archivero está vacío'), el('span', 'muted', 'Sumá tu primera carta de referencia con «Nueva carta». Después podés buscarla, abrirla y arrastrarla a la referencia.'));
-      host.append(e); return;
-    }
-    if (!shown.length) { host.append(el('div', 'cab-empty', 'Ninguna carta coincide con la búsqueda.')); return; }
-    const groups = new Map();
-    for (const r of shown) { const f = folderOf(r); if (!groups.has(f)) groups.set(f, []); groups.get(f).push(r); }
-    const names = [...groups.keys()].sort((a, b) => (a === 'Sueltas') - (b === 'Sueltas') || a.localeCompare(b, 'es'));
-    names.forEach((name, di) => {
-      const list = groups.get(name);
-      const drw = el('section', 'drw');
-      const isOpen = needle ? true : openDrawers.has(name);
-      drw.classList.toggle('open', isOpen);
-      drw.style.setProperty('--d', di);
-      const front = el('button', 'drw-front');
-      front.type = 'button'; front.setAttribute('aria-expanded', isOpen);
-      front.append(el('span', 'knob'), el('b', 'nm', name), el('span', 'cnt', String(list.length)));
-      front.addEventListener('click', () => {
-        const open = !drw.classList.contains('open');
-        drw.classList.toggle('open', open); front.setAttribute('aria-expanded', open);
-        if (open) openDrawers.add(name); else openDrawers.delete(name);
-        h.LS.set('pyl.cabOpen', [...openDrawers]);
-      });
-      const tray = el('div', 'drw-tray'), inner = el('div', 'drw-inner'), strip = el('div', 'strip');
-      strip.setAttribute('role', 'list');
-      list.forEach((r, i) => strip.append(sheetEl(r, i, needle)));
-      inner.append(strip); tray.append(inner);
-      drw.append(front, tray); host.append(drw);
-    });
-    markActive();
-  }
-
-  function sheetEl(r, i, needle) {
-    const wrap = el('div', 'sht-w'); wrap.setAttribute('role', 'listitem');
-    const b = el('button', 'sht'); b.type = 'button'; b.dataset.id = r.id;
-    b.style.setProperty('--c', r.color || COLORS[0][1]);
-    b.style.setProperty('--i', i);
-    b.style.setProperty('--tilt', ((hash(7, i + r.id.length, 3) - 0.5) * 5).toFixed(2) + 'deg');
-    b.setAttribute('aria-label', `${r.title}. Carta del cajón ${folderOf(r)}`);
-    b.classList.toggle('hit', !!needle);
-    const t = el('b', 'st', r.title || 'Sin título');
-    const sn = el('span', 'ss', r.text.replace(/\s+/g, ' ').slice(0, 150));
-    const chk = el('i', 'act'); chk.innerHTML = icon('check'); chk.setAttribute('aria-hidden', 'true');
-    b.append(t, sn, chk);
-    b.addEventListener('pointerdown', (e) => pointerDown(e, r, b));
-    b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); peek(r.id); } });
-    b.addEventListener('contextmenu', (e) => { if (drag) e.preventDefault(); });
-    wrap.append(b);
-    return wrap;
-  }
-  const markActive = () => $$('.sht').forEach((b) => b.classList.toggle('on', b.dataset.id === activeId));
-
-  /* ver de cerca */
   function peek(id) {
     const r = byId(id); if (!r) return;
     peekId = id;
-    const p = $('#peek'), sh = $('#peek-sheet');
+    const sh = $('#peek-sheet');
     sh.style.setProperty('--c', r.color || COLORS[0][1]);
     $('#peek-title').textContent = r.title || 'Sin título';
     $('#peek-folder').textContent = `Cajón: ${folderOf(r)}`;
     $('#peek-text').textContent = r.text;
     $('#peek-use').textContent = activeId === id ? 'Ya es la referencia' : 'Usar como referencia';
     $('#peek-use').disabled = activeId === id;
-    p.hidden = false;
+    $('#peek').hidden = false;
     sh.classList.remove('in'); void sh.offsetWidth; sh.classList.add('in');
     $('#peek-use').focus({ preventScroll: true });
   }
-  function closePeek() { if ($('#peek').hidden) return false; $('#peek').hidden = true; const b = peekId && $(`.sht[data-id="${peekId}"]`); peekId = null; b?.focus({ preventScroll: true }); return true; }
+  function closePeek() {
+    if ($('#peek').hidden) return false;
+    $('#peek').hidden = true;
+    const b = peekId && document.querySelector(`.sht[data-id="${peekId}"]`);
+    peekId = null; b?.focus({ preventScroll: true });
+    return true;
+  }
 
   /* ------------------------------------------------------------------ */
-  /* Arrastrar una carta hasta la referencia                             */
+  /* Arrastrar una carta hasta la referencia (lo usa el mueble)          */
   /* ------------------------------------------------------------------ */
-  let drag = null;
-  const mode = () => (h.S().refMode === 'float' && h.isMobile() ? 'panel' : h.S().refMode);
-  function pointerDown(e, r, node) {
-    if (e.button > 0) return;
-    drag = { r, node, x0: e.clientX, y0: e.clientY, id: e.pointerId, started: false, touch: e.pointerType === 'touch', timer: 0, ghost: null, moved: false };
-    if (drag.touch && !h.isMobile()) drag.timer = setTimeout(() => { if (drag) startDrag(); }, 360);
-  }
-  function startDrag() {
-    drag.started = true;
-    const g = drag.node.cloneNode(true);
-    g.classList.add('drag-ghost'); g.removeAttribute('data-id');
-    const r = drag.node.getBoundingClientRect();
-    g.style.width = r.width + 'px'; g.style.height = r.height + 'px';
-    document.body.append(g);
-    drag.ghost = g; drag.dx = drag.x0 - r.left; drag.dy = drag.y0 - r.top;
-    drag.node.classList.add('lifted');
-    document.body.classList.add('dragging-ref');
-    const m = mode();
-    if (m !== 'ghost') h.openNote(); // el destino tiene que estar a la vista
-    $('#view-write').classList.add('drop-on');
-    $('#view-write').dataset.drop = m;
-    try { drag.node.setPointerCapture(drag.id); } catch { /* nada */ }
+  const mode = () => {
+    const m = h.S().refMode === 'float' && h.isMobile() ? 'panel' : h.S().refMode;
+    return m === 'ghost' && h.inFocus() ? 'panel' : m; // con la hoja guardada a un costado, el destino visible es el cajón
+  };
+  function dragBegin() {
+    if (h.isMobile()) return;
+    if (mode() !== 'ghost') h.openNote(); // el destino tiene que estar a la vista
+    const vw = $('#view-write');
+    vw.classList.add('drop-on'); vw.dataset.drop = mode();
   }
   function overTarget(x, y) {
+    if (h.isMobile()) return false;
     const m = mode();
     if (m === 'float') { const b = $('#refwin').getBoundingClientRect(); return x >= b.left && x <= b.right && y >= b.top && y <= b.bottom; }
     if (m === 'ghost') { const b = $('#scroller').getBoundingClientRect(); return x >= b.left && x <= b.right && y >= b.top && y <= b.bottom; }
     return x > window.innerWidth - 372 && y > 64;
   }
-  document.addEventListener('pointermove', (e) => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const dist = Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0);
-    if (dist > 8) drag.moved = true;
-    if (!drag.started) {
-      if (drag.touch) { if (dist > 10) { clearTimeout(drag.timer); drag = null; } return; }
-      if (dist > 7 && !h.isMobile()) startDrag(); else return;
-    }
-    drag.ghost.style.transform = `translate(${e.clientX - drag.dx}px, ${e.clientY - drag.dy}px) rotate(${Math.max(-8, Math.min(8, (e.clientX - drag.x0) / 40))}deg) scale(1.04)`;
-    $('#view-write').classList.toggle('drop-over', overTarget(e.clientX, e.clientY));
-  });
-  document.addEventListener('touchmove', (e) => { if (drag && drag.started) e.preventDefault(); }, { passive: false });
-  const endDrag = (e, cancelled) => {
-    if (!drag || (e && e.pointerId !== drag.id)) return;
-    const d = drag; drag = null; clearTimeout(d.timer);
+  function dragOver(x, y) { const on = overTarget(x, y); $('#view-write').classList.toggle('drop-over', on); return on; }
+  // devuelve true si se soltó sobre la referencia (y la carta ya quedó como referencia)
+  function dragEnd(x, y, id, cancelled) {
     const vw = $('#view-write');
-    if (d.started) {
-      const hit = !cancelled && e && overTarget(e.clientX, e.clientY);
-      d.ghost.classList.add(hit ? 'land' : 'back');
-      setTimeout(() => d.ghost.remove(), 240);
-      d.node.classList.remove('lifted');
-      document.body.classList.remove('dragging-ref');
-      vw.classList.remove('drop-on', 'drop-over'); delete vw.dataset.drop;
-      if (hit) useRef(d.r.id);
-      d.node.dataset.swallow = '1'; setTimeout(() => delete d.node.dataset.swallow, 50);
-    } else if (!cancelled && !d.moved) {
-      peek(d.r.id);
-    }
-  };
-  document.addEventListener('pointerup', (e) => endDrag(e, false));
-  document.addEventListener('pointercancel', (e) => endDrag(e, true));
+    const hit = !cancelled && overTarget(x, y);
+    vw.classList.remove('drop-on', 'drop-over'); delete vw.dataset.drop;
+    if (hit) useRef(id);
+    return hit;
+  }
 
   /* ------------------------------------------------------------------ */
   /* La referencia en uso                                                */
   /* ------------------------------------------------------------------ */
   function useRef(id) {
     activeId = id; h.LS.set('pyl.activeRef', id);
-    applyActive(); markActive();
+    applyActive();
     const r = byId(id);
     if (mode() !== 'ghost' && !h.isMobile()) h.openNote();
     h.toast(`«${r.title}» quedó como referencia.`, 2600);
     if (peekId) peek(peekId);
   }
-  function dropRef() { activeId = null; h.LS.set('pyl.activeRef', null); applyActive(); markActive(); }
+  function dropRef() { activeId = null; h.LS.set('pyl.activeRef', null); applyActive(); }
 
   function applyActive() {
     const r = active();
@@ -221,6 +139,7 @@ export function setupRefs(h) {
     if (r) renderView(r);
     refreshGhost();
     $('#refc').classList.toggle('is-ref', !!r);
+    emit();
   }
 
   let viewSig = '';
@@ -279,7 +198,7 @@ export function setupRefs(h) {
     if (S.refMode === 'ghost' && src.trim()) w.setGhost(src, S.ghostAlpha); else w.setGhost(null);
   }
 
-  /* dónde vive la referencia: cajón, ventana flotante (o fantasma, que solo suma el texto tenue) */
+  /* dónde vive la referencia: cajón o ventana flotante (el fantasma solo suma el texto tenue) */
   const win = () => $('#refwin');
   function placeRef() {
     const floating = mode() === 'float';
@@ -345,10 +264,10 @@ export function setupRefs(h) {
     pickedColor = c;
     $$('#ref-colors .sw').forEach((b) => b.setAttribute('aria-pressed', b.dataset.color === c));
   }
-  const host = $('#ref-colors');
+  const colorHost = $('#ref-colors');
   COLORS.forEach(([n, c]) => {
     const b = el('button', 'sw'); b.type = 'button'; b.style.background = c; b.title = n; b.setAttribute('aria-label', n); b.dataset.color = c;
-    b.addEventListener('click', () => pickColor(c)); host.append(b);
+    b.addEventListener('click', () => pickColor(c)); colorHost.append(b);
   });
   $('#ref-save').addEventListener('click', async (e) => {
     e.preventDefault();
@@ -370,9 +289,8 @@ export function setupRefs(h) {
   /* ------------------------------------------------------------------ */
   /* Eventos                                                             */
   /* ------------------------------------------------------------------ */
-  $('#cab-add').addEventListener('click', () => openEditor());
-  $('#cab-q').addEventListener('input', debounce((e) => { q = e.target.value; render(); }, 120));
   $('#peek-close').addEventListener('click', closePeek);
+  $('#peek').addEventListener('pointerdown', (e) => { if (e.target === $('#peek')) closePeek(); });
   $('#peek-use').addEventListener('click', () => { if (peekId) useRef(peekId); });
   $('#peek-edit').addEventListener('click', () => { if (peekId) openEditor(peekId); });
   $('#peek-del').addEventListener('click', async () => {
@@ -385,27 +303,22 @@ export function setupRefs(h) {
   $('#ref-font').addEventListener('click', () => { h.S().refFont = h.S().refFont === 'hand' ? 'legible' : 'hand'; h.saveSettings(); h.syncControls(); const r = active(); if (r) renderView(r, true); });
   $('#note-text').addEventListener('input', debounce(refreshGhost, 250));
 
-  $('#cab-export').addEventListener('click', async () => {
+  async function exportAll() {
     if (!refs.length) { h.toast('Todavía no hay cartas para exportar.'); return; }
     try { h.download(await DB.exportRefs(), 'archivero.pyl.gz'); h.toast('Archivero exportado.', 2200); } catch (e) { console.error(e); h.toast('No pude exportar el archivero.'); }
-  });
-  $('#cab-import').addEventListener('change', async (e) => {
-    const f = e.target.files[0]; e.target.value = '';
-    if (!f) return;
+  }
+  async function importFile(f) {
     try { const n = await DB.importRefs(f); await load(); h.toast(`Se sumaron ${n} cartas.`, 3000); } catch (err) { h.toast(err.message || 'No pude importar ese archivo.'); }
-  });
-  // un click que viene de soltar una carta arrastrada no debe abrir la vista de cerca
-  document.addEventListener('click', (e) => { const b = e.target.closest?.('.sht'); if (b && b.dataset.swallow) e.stopPropagation(); }, true);
+  }
 
   load();
   placeRef();
   return {
+    list: () => refs, byId, activeId: () => activeId, onChange: (f) => subs.add(f),
+    useRef, dropRef, openEditor, peek, closePeek, setPos, exportAll, importFile,
+    dragBegin, dragOver, dragEnd,
     peekOpen: () => !$('#peek').hidden,
-    closePeek,
-    showNote,
-    placeRef,
-    refreshGhost,
+    showNote, placeRef, refreshGhost,
     refreshView: () => { const r = active(); if (r) renderView(r, true); },
-    hasRefs: () => refs.length,
   };
 }

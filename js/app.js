@@ -9,6 +9,7 @@ import { printLetter, printTemplates } from './print.js';
 import { icon, hydrateIcons } from './icons.js';
 import { DEFAULT_THEME, applyTheme, Background, paintRange } from './theme.js';
 import { setupRefs } from './refs.js';
+import { setupMueble } from './mueble.js';
 
 /* ------------------------------------------------------------------ */
 /* Ajustes y almacenamiento simple                                     */
@@ -367,29 +368,27 @@ function setupInput() {
 /* ------------------------------------------------------------------ */
 /* Cajones (celular) y vistas                                          */
 /* ------------------------------------------------------------------ */
-// ventanas de la barra: una sola abierta a la vez (ajustes en #pop, nota en su cajón)
-// Izquierda: ajustes (en #pop) o el archivero (#cab), uno a la vez. Derecha: la referencia (nota o carta), que puede convivir.
+// Izquierda: ajustes (en #pop). Derecha: la referencia (nota o carta). El archivero es el mueble del fondo («Cartas» lo pone al frente).
 let openPanel = null, noteOpen = false;
 function markDock() {
   $$('.dock-btn[data-panel]').forEach((b) => {
-    const on = b.dataset.panel === 'note' ? noteOpen : b.dataset.panel === openPanel;
+    const on = b.dataset.panel === 'note' ? noteOpen : b.dataset.panel === 'cab' ? !!muebleApi?.isFocus() : b.dataset.panel === openPanel;
     b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
   });
 }
 function setLeft(name) {
   openPanel = name;
-  const pop = $('#pop'), cab = $('#cab');
-  const sec = name && name !== 'cab' ? $(`.sec[data-sec="${name}"]`, pop) : null;
+  const pop = $('#pop');
+  const sec = name ? $(`.sec[data-sec="${name}"]`, pop) : null;
   $$('.sec', pop).forEach((s) => { s.classList.toggle('act', s === sec); s.classList.remove('go'); });
   if (sec) {
     [...sec.children].forEach((c, i) => c.style.setProperty('--i', i));
     void sec.offsetWidth; sec.classList.add('go');
+    muebleApi?.setFocus(false); // para ajustar la hoja hay que verla
   }
   pop.classList.toggle('open', !!sec);
   pop.setAttribute('aria-label', sec ? sec.querySelector('h2').textContent : 'Ajustes');
-  cab.classList.toggle('open', name === 'cab');
-  $('#view-write').style.setProperty('--left-w', name === 'cab' ? '480px' : sec ? '376px' : '0px');
-  if (name !== 'cab') refsApi?.closePeek();
+  $('#view-write').style.setProperty('--left-w', sec ? '376px' : '0px');
   if (name && isMobile()) { $('#cap').blur(); setNote(false); }
   markDock();
 }
@@ -400,10 +399,12 @@ function setNote(open) {
   markDock();
 }
 function togglePanel(name) {
-  if (name === 'note') setNote(!noteOpen); else setLeft(openPanel === name ? null : name);
+  if (name === 'note') setNote(!noteOpen);
+  else if (name === 'cab') { setLeft(null); muebleApi.setFocus(!muebleApi.isFocus()); if (isMobile()) setNote(false); }
+  else setLeft(openPanel === name ? null : name);
 }
 const closeDrawers = () => { setLeft(null); setNote(false); };
-let refsApi = null;
+let refsApi = null, muebleApi = null;
 
 /* ------------------------------------------------------------------ */
 /* Hojas: dar vuelta, tomar otra, cambiar de cara                      */
@@ -469,6 +470,7 @@ function setView(v) {
   $('#view-write').hidden = v !== 'write';
   $('#view-hand').hidden = v !== 'hand';
   $('#btn-print').hidden = v !== 'write';
+  if (v !== 'write') muebleApi?.setFocus(false);
   if (v === 'write') requestAnimationFrame(fit);
   closeDrawers();
   if (viewReady && changed) { // fundido corto, solo al cambiar de sección
@@ -936,9 +938,10 @@ async function init() {
   setupNewLetter();
   refsApi = setupRefs({
     S: () => S, saveSettings, writer: () => writer, lib, toast, ask, isMobile, LS,
-    isNoteOpen: () => noteOpen, openNote: () => setNote(true), closeNote: () => setNote(false), syncControls,
+    inFocus: () => !!muebleApi?.isFocus(), isNoteOpen: () => noteOpen, openNote: () => setNote(true), closeNote: () => setNote(false), syncControls,
     download: (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); },
   });
+  muebleApi = setupMueble({ LS, isMobile, onFocus: () => markDock() }, refsApi);
   $('#pg-prev').addEventListener('click', () => goPage(writer.page - 1));
   $('#pg-next').addEventListener('click', () => goPage(writer.page + 1));
   setupSheetOps();
@@ -952,6 +955,7 @@ async function init() {
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || document.querySelector('dialog[open]')) return;
     if (refsApi?.peekOpen()) return; // la vista de cerca maneja su propio Esc
+    if (muebleApi?.isFocus()) { muebleApi.setFocus(false); $('.dock-btn[data-panel="cab"]')?.focus(); return; }
     if (openPanel) { const b = $(`.dock-btn[data-panel="${openPanel}"]`); setLeft(null); b?.focus(); }
     else if (noteOpen) { setNote(false); $('.dock-btn[data-panel="note"]')?.focus(); }
   });
