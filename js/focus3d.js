@@ -5,7 +5,7 @@
 // la luz en V se enciende. Al salir hace el camino inverso hasta volver a la hoja normal.
 // three.js se carga solo al entrar al modo foco (vendor/three.min.js) y queda guardado para usarlo sin conexión.
 import { $ } from './util.js';
-import { PAGE_W as W, PAGE_H as H } from './template.js';
+import { PW as W, PH as H } from './format.js';
 
 // Valores elegidos en el editor de luz.
 export const LOOK = {
@@ -52,6 +52,7 @@ float lightMask( int i ) {
 // h = { writer(), animOn() }
 export function createFocus3D(h) {
   let T = null, ready = false, running = false, raf = 0, texDirty = true;
+  let gW = 0, gH = 0, mesh;
   let renderer, scene, camera, group, geo, base, tex, spot, halo, amb, flat, host, glowEl, vigEl, dimEl, canvasEl;
   let u = 0, uTarget = 0, uDur = 1.3, onArrive = null, pose0 = { d: 300, tx: 0, ty: LOOK.escena.camY }, zoomNow = LOOK.escena.zoom / 100, zoomTarget = zoomNow;
   const U = {}; const rows = []; const NX = 25; let NY = 480;
@@ -186,14 +187,14 @@ export function createFocus3D(h) {
     renderer = new T.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.setClearColor(0x000000, 0); renderer.outputEncoding = T.sRGBEncoding; renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1;
     scene = new T.Scene(); camera = new T.PerspectiveCamera(32, 16 / 9, 10, 2000);
-    geo = new T.PlaneGeometry(W, H, NX - 1, NY - 1); base = geo.attributes.position.array.slice();
+    geo = new T.PlaneGeometry(W, H, NX - 1, NY - 1); base = geo.attributes.position.array.slice(); gW = W; gH = H;
     tex = new T.CanvasTexture(h.writer().cv); tex.encoding = T.sRGBEncoding; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
     const bc = document.createElement('canvas'); bc.width = 512; bc.height = 724; const bx = bc.getContext('2d'), bimg = bx.createImageData(512, 724);
     for (let i = 0; i < bimg.data.length; i += 4) { const v = 128 + (Math.random() - 0.5) * 40; bimg.data[i] = bimg.data[i + 1] = bimg.data[i + 2] = v; bimg.data[i + 3] = 255; } bx.putImageData(bimg, 0, 0);
     const mat = new T.MeshStandardMaterial({ map: tex, bumpMap: new T.CanvasTexture(bc), bumpScale: 0.12, roughness: 0.92, metalness: 0, side: T.DoubleSide });
     Object.assign(U, { uLA: { value: [new T.Vector4(), new T.Vector4()] }, uLB: { value: [new T.Vector4(), new T.Vector4()] }, uLC: { value: [new T.Vector4(), new T.Vector4()] }, uLD: { value: [new T.Vector4(), new T.Vector4()] }, uCore: { value: new T.Vector2(0, -8) } });
     patchMat(mat);
-    group = new T.Group(); group.add(new T.Mesh(geo, mat)); scene.add(group);
+    mesh = new T.Mesh(geo, mat); group = new T.Group(); group.add(mesh); scene.add(group);
     amb = new T.AmbientLight(0xffdcb8, 0.1); scene.add(amb);
     spot = new T.SpotLight(0xffcf98, 1, 430, 1.5, 0.15, 2); scene.add(spot, spot.target);
     halo = new T.SpotLight(0xffa862, 0.4, 760, 1.5, 0.15, 1.4); scene.add(halo, halo.target);
@@ -206,7 +207,7 @@ export function createFocus3D(h) {
   function resize() { const w = innerWidth, hh = innerHeight; renderer.setSize(w, hh, false); camera.aspect = w / hh; camera.updateProjectionMatrix(); }
   const fovT = () => Math.tan(T.MathUtils.degToRad(camera.fov / 2));
   // distancia final de la cámara (según el zoom elegido y la forma de la pantalla)
-  function endDist() { const asp = innerWidth / innerHeight, extent = asp < 1.1 ? (W * 0.95 / asp) * (zoomNow / 0.61) : H * 1.08 * zoomNow; return (extent * 0.5) / fovT(); }
+  function endDist() { const asp = innerWidth / innerHeight, extent = asp < 1.1 ? (210 * 0.95 / asp) * (zoomNow / 0.61) : 297 * 1.08 * zoomNow; /* medidas de A4: una hoja A5 se ve más chica, como es */ return (extent * 0.5) / fovT(); }
   // pose de partida/llegada: la hoja plana ocupa exactamente el rectángulo de la hoja normal (px de pantalla)
   function setPose0(rect) {
     const ppm = rect.width / W;
@@ -254,6 +255,7 @@ export function createFocus3D(h) {
     // arranca desde la hoja normal (rect = su rectángulo en pantalla; clip = la zona visible de la hoja)
     async start({ rect, clip, dur } = {}) {
       if (!ready) await init();
+      if (gW !== W || gH !== H) { geo.dispose(); geo = new T.PlaneGeometry(W, H, NX - 1, NY - 1); base = geo.attributes.position.array.slice(); gW = W; gH = H; mesh.geometry = geo; elKey = ''; } // la hoja cambió de tamaño (A4 / A5)
       running = true; first = true; ret = null; texDirty = true; last = performance.now(); u = 0; uTarget = 1; uDur = dur || 1.3; onArrive = null;
       zoomNow = zoomTarget = LOOK.escena.zoom / 100 * (h.viewFactor?.() || 1);
       host.hidden = false; resize(); setPose0(rect || { left: innerWidth * 0.2, top: 0, width: innerWidth * 0.6, height: innerWidth * 0.6 * H / W });

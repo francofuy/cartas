@@ -67,7 +67,7 @@
 
   <header class="top">
     <div class="top-l">
-      <button class="letter-chip g" id="letter-chip" type="button" title="Mis cartas: las que están en curso y las versiones de esta" aria-label="Carta que estás escribiendo. Abrir Mis cartas"><span class="ico" data-icon="letters"></span><span class="t">Carta sin título</span></button>
+      <button class="letter-chip g" id="letter-chip" type="button" title="Cuadernos: cerrá este y elegí otro" aria-label="Cuadernos. Cerrar este cuaderno y ver la mesa" aria-expanded="false"><span class="ico" data-icon="letters"></span><span class="t">Carta sin título</span></button>
       <button class="letter-chip g" id="sealed-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="sealed-pop" title="Cartas cerradas"><span class="ico" data-icon="mail"></span><span class="t">Cerradas</span><span class="chip-n" id="bz-count" hidden></span></button>
       <div class="sealed-pop gp" id="sealed-pop" role="region" aria-label="Cartas cerradas" hidden>
         <ul class="sealed-list compact" id="sealed-pop-list"></ul>
@@ -86,6 +86,20 @@
       </button>
     </div>
   </header>
+
+
+  <!-- la mesa de cuadernos: cada carta en curso es un cuaderno con espiral -->
+  <div id="mesa" class="mesa" hidden role="region" aria-label="Cuadernos">
+    <p class="mesa-hint" id="mesa-hint"><b>Elegí un cuaderno</b> para abrirlo en su próxima hoja libre <button class="inline-link" id="mesa-versions" type="button">Borradores y versiones</button></p>
+    <div class="mesa-stage"></div>
+    <div class="nb-pop gp" id="nb-pop" role="dialog" aria-labelledby="nb-pop-t" hidden>
+      <h3 id="nb-pop-t">Nuevo cuaderno</h3>
+      <label class="fld">Nombre (opcional)<input type="text" id="nb-name" maxlength="28" placeholder="Por ejemplo: Cartas a Sofía"></label>
+      <div class="nb-opts" role="group" aria-label="Tamaño de la hoja"><button class="chip" type="button" data-fmt="A5" aria-pressed="true">A5 · 148 × 210 mm</button><button class="chip" type="button" data-fmt="A4" aria-pressed="false">A4 · 210 × 297 mm</button></div>
+      <div class="nb-opts" id="nb-colors" role="group" aria-label="Color de la tapa"></div>
+      <div class="row end"><button class="btn" type="button" id="nb-cancel">Cancelar</button><button class="btn primary" type="button" id="nb-ok">Crear y abrir</button></div>
+    </div>
+  </div>
 
   <main>
     <!-- ===================== ESCRIBIR ===================== -->

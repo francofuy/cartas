@@ -1,5 +1,6 @@
 // Impresión: se dibujan las hojas a 300 ppp y se mandan al diálogo de impresión del navegador.
 import { templatePageEl } from './template.js';
+import { dimsOf } from './format.js';
 
 const PRINT_PPM = 300 / 25.4;
 
@@ -40,8 +41,12 @@ export async function printTemplates(pages) {
 }
 
 // render(idx) devuelve un Blob JPEG de la cara; null en la lista = hoja en blanco
-export async function printFaces(render, idxs) {
+export async function printFaces(render, idxs, fmt = 'A4') {
   const r = root();
+  // el papel de la impresora tiene que ser del tamaño de la hoja (A4 o A5)
+  const d = dimsOf(fmt); let st = document.getElementById('pp-style');
+  if (!st) { st = document.createElement('style'); st.id = 'pp-style'; document.head.append(st); }
+  st.textContent = `@page { size: ${d.w}mm ${d.h}mm; margin: 0; } @media print { .print-sheet { width: ${d.w}mm !important; height: ${d.h}mm !important; } }`;
   const urls = [];
   for (const p of idxs) {
     if (p == null) { // hoja en blanco: mantiene el orden cuando una hoja no tiene dorso

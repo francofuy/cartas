@@ -2,7 +2,7 @@
 import { layoutText, hitTest } from './layout.js';
 import { drawPaper } from './paper.js';
 import { getSprite, revealSprite, PAD } from './glyphs.js';
-import { PAGE_W, PAGE_H } from './template.js';
+import { PW as PAGE_W, PH as PAGE_H } from './format.js';
 import { clamp } from './util.js';
 import { normalizeChar } from './chars.js';
 

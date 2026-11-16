@@ -33,11 +33,11 @@ export function createPrintFlow(h) {
     const real = 'En el cuadro de impresión elegí tamaño real (100 %), sin márgenes ni encabezados.';
     const once = src.note ? `${src.note} ` : '';
     if (!hasBack) {
-      info.textContent = `${once}Se va a imprimir ${plural(nS, 'hoja A4', 'hojas A4')}, una cara cada una. ${real}`;
+      info.textContent = `${once}Se va a imprimir ${plural(nS, `hoja ${src.fmt || 'A4'}`, `hojas ${src.fmt || 'A4'}`)}, una cara cada una. ${real}`;
       tip.textContent = ''; go.textContent = src.goLabel || 'Imprimir carta';
       return;
     }
-    info.textContent = `${once}${only ? 'Se reimprimen' : 'Tu carta tiene'} ${plural(nS, 'hoja', 'hojas')}, ${nB === nS ? 'todas con dorso' : `${nB} con dorso y ${nS - nB} sin dorso`}. ${real}`;
+    info.textContent = `${once}${only ? 'Se reimprimen' : 'Tu carta tiene'} ${plural(nS, `hoja ${src.fmt || 'A4'}`, `hojas ${src.fmt || 'A4'}`)}, ${nB === nS ? 'todas con dorso' : `${nB} con dorso y ${nS - nB} sin dorso`}. ${real}`;
     if (S.printMode === 'duplex') {
       tip.textContent = 'En el cuadro de impresión activá «Imprimir en ambas caras» y elegí «Voltear por el borde largo». Las hojas sin dorso salen con el dorso en blanco. El navegador no puede saber si tu impresora lo permite: si no aparece esa opción, volvé y elegí «Una cara por hoja».';
       go.textContent = src.goLabel || 'Imprimir carta';
@@ -64,7 +64,7 @@ export function createPrintFlow(h) {
     const job = jobs[Math.min(step, jobs.length) - 1];
     h.busy('Preparando las hojas para imprimir…');
     let res = 'ok';
-    try { res = await printFaces(src.render, job); } catch (err) { console.error(err); h.toast('No pude preparar la impresión.'); res = 'error'; }
+    try { res = await printFaces(src.render, job, src.fmt); } catch (err) { console.error(err); h.toast('No pude preparar la impresión.'); res = 'error'; }
     h.unbusy();
     if (res === 'blocked') h.toast('Este entorno no deja abrir la impresión. Abrí la app directamente en el navegador para imprimir.', 6500);
     if (res === 'ok' && h.S().printMode === 'manual' && jobs.length > 1 && step === 1) { step = 2; refresh(); dlg.showModal(); return; }

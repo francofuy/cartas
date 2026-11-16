@@ -3,7 +3,7 @@
 import { $, $$, uid } from './util.js';
 import * as DB from './db.js';
 import { drawPaper, setPaperImage } from './paper.js';
-import { PAGE_W, PAGE_H } from './template.js';
+import { FMT, FORMATS, setFormat, dimsOf } from './format.js';
 import { PRINT_DPI_PPM } from './print.js';
 import { playSeal } from './seal.js';
 
@@ -21,6 +21,7 @@ export function setupLetters(h) {
   /* ------------------------------------------------------------------ */
   /* Cartas en curso (borradores)                                        */
   /* ------------------------------------------------------------------ */
+  const COLOR_KEYS = ['indigo', 'vino', 'salvia', 'mostaza', 'grafito', 'petroleo'];
   let drafts = [], activeId = null, lastRemoved = null;
   const cur = () => drafts.find((d) => d.id === activeId) || null;
   const persist = () => { LS.set('pyl.drafts', drafts); LS.set('pyl.draftActive', activeId); };
@@ -29,19 +30,21 @@ export function setupLetters(h) {
     drafts = LS.get('pyl.drafts', null); activeId = LS.get('pyl.draftActive', null);
     if (!Array.isArray(drafts) || !drafts.length) { // primera vez con varias cartas: la carta de siempre pasa a ser la primera
       const old = LS.get('pyl.draft', { text: '' });
-      drafts = [{ id: uid(), text: old.text || '', seed: S().seed, ts: Date.now(), title: titleOf(old.text) }];
+      drafts = [{ id: uid(), text: old.text || '', seed: S().seed, ts: Date.now(), title: titleOf(old.text), fmt: 'A4', color: 'indigo' }];
       activeId = drafts[0].id;
       LS.set('pyl.versions', LS.get('pyl.versions', []).map((v) => (v.draftId ? v : { ...v, draftId: activeId })));
       persist();
     }
+    drafts.forEach((d, i) => { if (!FORMATS[d.fmt]) d.fmt = 'A4'; if (!d.color) d.color = COLOR_KEYS[(i * 3 + 1) % COLOR_KEYS.length]; });
     if (!drafts.some((d) => d.id === activeId)) activeId = drafts[0].id;
   }
   function saveActive() {
     const d = cur(), w = W(); if (!d || !w) return;
-    d.text = w.text; d.seed = S().seed; d.ts = Date.now(); d.title = titleOf(w.text);
+    d.text = w.text; d.seed = S().seed; d.ts = Date.now(); d.title = d.name || titleOf(w.text);
     persist(); updateChip();
   }
   function loadInto(d) {
+    setFormat(d.fmt); h.onFormat?.(); // cada cuaderno tiene su tamaño de hoja
     S().seed = d.seed || newSeed(); h.saveSettings();
     W().setText(d.text || ''); W()._syncCap?.();
   }
@@ -52,11 +55,11 @@ export function setupLetters(h) {
     if (old && isEmpty(old.text) && drafts.length > 1) drafts = drafts.filter((d) => d.id !== old.id); // una carta en blanco no se guarda
     activeId = id; loadInto(cur()); persist(); updateChip();
   }
-  function startBlank(force = false) {
+  function startBlank(force = false, opts = {}) {
     saveActive();
     const c = cur();
-    if (!force && c && isEmpty(c.text)) return false;
-    const d = { id: uid(), text: '', seed: newSeed(), ts: Date.now(), title: 'Carta sin título' };
+    if (!force && !opts.fmt && c && isEmpty(c.text)) return false;
+    const d = { id: uid(), text: '', seed: newSeed(), ts: Date.now(), title: opts.name || 'Carta sin título', name: opts.name || '', fmt: opts.fmt || (c && c.fmt) || 'A4', color: opts.color || COLOR_KEYS[Math.floor(Math.random() * COLOR_KEYS.length)] };
     drafts.unshift(d); activeId = d.id; loadInto(d); persist(); updateChip();
     return true;
   }
@@ -64,13 +67,13 @@ export function setupLetters(h) {
     const i = drafts.findIndex((d) => d.id === id); if (i < 0) return;
     lastRemoved = { d: drafts[i], i };
     drafts.splice(i, 1);
-    if (!drafts.length) { drafts.push({ id: uid(), text: '', seed: newSeed(), ts: Date.now(), title: 'Carta sin título' }); }
+    if (!drafts.length) { drafts.push({ id: uid(), text: '', seed: newSeed(), ts: Date.now(), title: 'Carta sin título', fmt: 'A4', color: 'indigo' }); }
     if (id === activeId) { activeId = drafts[Math.min(i, drafts.length - 1)].id; loadInto(cur()); }
     persist(); updateChip(); renderDrafts();
   }
   function updateChip() {
     const b = $('#letter-chip'), d = cur(); if (!b || !d) return;
-    $('.t', b).textContent = d.title || titleOf(d.text);
+    $('.t', b).textContent = d.name || d.title || titleOf(d.text);
   }
   function renderDrafts() {
     const ul = $('#draft-list'); ul.innerHTML = '';
@@ -91,7 +94,6 @@ export function setupLetters(h) {
   }
   function openDialog() { lastRemoved = null; saveActive(); renderDrafts(); h.onOpenDialog?.(); $('#versions').showModal(); }
   $('#draft-new').addEventListener('click', () => { if (startBlank()) $('#versions').close(); else h.toast('Ya estás en una carta en blanco.'); });
-  $('#letter-chip').addEventListener('click', openDialog);
 
   /* ------------------------------------------------------------------ */
   /* Cerrar la carta                                                     */
@@ -128,17 +130,17 @@ export function setupLetters(h) {
       for (let i = 0; i < pages; i++) { const c = document.createElement('canvas'); w.renderInkTo(c, i, PRINT_DPI_PPM); ink.push(await toBlob(c, 'image/png')); c.width = c.height = 0; await new Promise((r) => setTimeout(r)); }
       let paperImage = null;
       if (paper.imageId) paperImage = await h.paperBlob(paper.imageId);
-      const rec = { id, title: d.title, ts: Date.now(), status: 'sealed', pages, faces: L.faces.map((f) => ({ ...f })), sheets: L.sheets.map((s) => ({ ...s })), ink, paper, paperImage, thumbs };
+      const rec = { id, title: d.title, fmt: d.fmt || 'A4', ts: Date.now(), status: 'sealed', pages, faces: L.faces.map((f) => ({ ...f })), sheets: L.sheets.map((s) => ({ ...s })), ink, paper, paperImage, thumbs };
       await saveLetter(rec);
       // la carta sale del editor; si pidió borrar sus versiones, también
       if (delVersions) LS.set('pyl.versions', LS.get('pyl.versions', []).filter((v) => v.draftId !== sealedDraftId));
       drafts = drafts.filter((x) => x.id !== sealedDraftId);
-      const nd = { id: uid(), text: '', seed: newSeed(), ts: Date.now(), title: 'Carta sin título' };
+      const nd = { id: uid(), text: '', seed: newSeed(), ts: Date.now(), title: 'Carta sin título', fmt: d.fmt || 'A4', color: d.color };
       drafts.unshift(nd); activeId = nd.id; loadInto(nd); persist(); updateChip();
       letters.unshift(rec); renderBuzon();
       await fx;
       h.unbusy();
-      h.toast('Carta cerrada. La encontrás en Mis cartas: se imprime una sola vez.', 4200);
+      h.toast('Carta cerrada. La encontrás en Cerradas: se imprime una sola vez.', 4200);
       pulseBuzon();
     } catch (err) {
       console.error(err); h.unbusy();
@@ -261,19 +263,22 @@ export function setupLetters(h) {
 
   // el papel y la tinta congelados se vuelven a juntar al imprimir
   async function renderSealed(rec, idx) {
-    const ppm = PRINT_DPI_PPM, c = document.createElement('canvas');
-    c.width = Math.round(PAGE_W * ppm); c.height = Math.round(PAGE_H * ppm);
-    const ctx = c.getContext('2d'), tmp = 'sealed:' + rec.id;
-    if (rec.paperImage) setPaperImage(tmp, await createImageBitmap(rec.paperImage));
-    drawPaper(ctx, ppm, { ...rec.paper, imageId: rec.paperImage ? tmp : null });
-    const bmp = await createImageBitmap(rec.ink[idx]);
-    ctx.drawImage(bmp, 0, 0, c.width, c.height);
-    if (rec.paperImage) setPaperImage(tmp, null);
-    return toBlob(c, 'image/jpeg', 0.95);
+    const keep = FMT, d = dimsOf(rec.fmt); setFormat(rec.fmt || 'A4'); // el papel se dibuja con las medidas de la carta (A4 o A5)
+    try {
+      const ppm = PRINT_DPI_PPM, c = document.createElement('canvas');
+      c.width = Math.round(d.w * ppm); c.height = Math.round(d.h * ppm);
+      const ctx = c.getContext('2d'), tmp = 'sealed:' + rec.id;
+      if (rec.paperImage) setPaperImage(tmp, await createImageBitmap(rec.paperImage));
+      drawPaper(ctx, ppm, { ...rec.paper, imageId: rec.paperImage ? tmp : null });
+      const bmp = await createImageBitmap(rec.ink[idx]);
+      ctx.drawImage(bmp, 0, 0, c.width, c.height);
+      if (rec.paperImage) setPaperImage(tmp, null);
+      return await toBlob(c, 'image/jpeg', 0.95);
+    } finally { setFormat(keep); }
   }
   function startPrint(rec, only = null) {
     const src = {
-      sheets: rec.sheets, pages: rec.pages, goLabel: 'Imprimir (única vez)',
+      sheets: rec.sheets, pages: rec.pages, fmt: rec.fmt || 'A4', goLabel: 'Imprimir (única vez)',
       note: 'Esta carta se imprime una sola vez: después te pido confirmar que salió bien y se elimina.',
       render: (i) => renderSealed(rec, i),
       onStart: async () => { rec.status = 'printing'; await saveLetter(rec); renderBuzon(); },
@@ -331,8 +336,9 @@ export function setupLetters(h) {
   /* ------------------------------------------------------------------ */
   load(); updateChip(); loadLetters();
   const api = {
-    start() { const d = cur(); S().seed = d.seed || S().seed; return d.text || ''; },
-    saveActive, openDialog, activeId: () => activeId, startBlank,
+    start() { const d = cur(); setFormat(d.fmt); S().seed = d.seed || S().seed; return d.text || ''; },
+    drafts: () => drafts, activeDraft: () => cur(), switchTo, startBlank,
+    saveActive, openDialog, activeId: () => activeId,
     openSealed() { openDialog(); $('#sealed-sec')?.scrollIntoView({ block: 'nearest' }); },
     closePops, syncEmpty, applyViews,
     pendingCount: () => letters.filter((l) => l.status === 'printing').length,

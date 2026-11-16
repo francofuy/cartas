@@ -3,7 +3,7 @@
 import { $, $$, uid } from './util.js';
 import * as DB from './db.js';
 import { drawPaper, PAPER_BASE, PAPER_PRESETS, setPaperImage, hasPaperImage } from './paper.js';
-import { PAGE_W, PAGE_H } from './template.js';
+import { PW as PAGE_W, PH as PAGE_H } from './format.js';
 import { buildChips, buildSwatches } from './controls.js';
 import { PROVIDERS, search, downloadImage } from './webpapers.js';
 
@@ -140,6 +140,7 @@ export function setupPapers(h) {
   /* ------------------------------------------------------------------ */
   const W = 108, H = Math.round((108 * PAGE_H) / PAGE_W);
   function thumb(paper) {
+    const H = Math.round((108 * PAGE_H) / PAGE_W); // la miniatura sigue el tamaño de hoja en uso (A4 o A5)
     const c = document.createElement('canvas');
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     c.width = W * dpr; c.height = H * dpr; c.style.width = W + 'px'; c.style.height = H + 'px';

@@ -17,6 +17,8 @@ import { setupCurl } from './curl.js';
 import { PenSound } from './sound.js';
 import { setupLetters } from './letters.js';
 import { setupFocus } from './focus.js';
+import { setupCuadernos } from './cuadernos.js';
+import { FMT, PW, PH } from './format.js';
 import { exportBackup, importBackup, describe as describeBackup } from './backup.js';
 
 /* ------------------------------------------------------------------ */
@@ -266,13 +268,24 @@ function fit() {
   const availH = sc.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) + 20;
   if (availW < 80 || availH < 80) return;
   // por defecto la hoja usa todo el ancho (hasta 760 px) para que la letra se lea; "Hoja entera" la ajusta a la altura
-  const base = isMobile() ? availW : fitMode === 'page' ? Math.min(availW, (availH * 210) / 297) : Math.min(availW, 760);
+  // el tamaño en pantalla sigue al papel: una hoja A5 se ve más chica que una A4 (misma escala)
+  const base = isMobile() ? availW : fitMode === 'page' ? Math.min(availW, (availH * PW) / PH) : Math.min(availW, (760 * PW) / 210);
   let w = Math.round(base * zoom);
   if (focusApi?.wantsTexture()) w = focusApi.textureCssW(); // modo foco en 3D: la hoja se dibuja más grande para que la textura se lea bien
   if (Math.abs(w - writer.cssW) > 1) writer.resize(w);
+  renderBinding();
   curlApi?.place();
 }
 
+// el espiral del cuaderno: en las caras del frente (hoja de la derecha) queda a la izquierda; en el dorso (hoja de la izquierda) queda a la derecha
+function renderBinding(side) {
+  const wrap = $('.sheet-wrap'); if (!wrap) return;
+  let b = $('.bind', wrap); if (!b) { b = document.createElement('div'); b.className = 'bind'; b.setAttribute('aria-hidden', 'true'); wrap.append(b); }
+  const n = Math.max(8, Math.round(PH / 11));
+  if (b.childElementCount !== n) { b.innerHTML = ''; for (let i = 0; i < n; i++) { const r = document.createElement('i'); r.style.top = `${((i + 0.5) / n) * 100}%`; b.append(r); } }
+  if (side) wrap.dataset.side = side;
+  wrap.style.setProperty('--mm', `${writer ? writer.cssW / PW : 3.6}px`);
+}
 function faceLabel(info) {
   const f = info.faces[info.page], n = info.sheets.length;
   const hasBack = info.sheets[f.sheet].back != null;
@@ -282,6 +295,7 @@ function faceLabel(info) {
 function updatePager(info) {
   curlApi?.place();
   const lb = faceLabel(info);
+  renderBinding(lb.f.side);
   $('#pg-label').innerHTML = `<span class="long">${lb.long}</span><span class="short" aria-hidden="true">${lb.short}</span>`;
   const flip = $('#btn-flip');
   flip.querySelector('.lab').textContent = lb.f.side === 'back' ? 'Ver el frente' : lb.hasBack ? 'Ver el dorso' : 'Dar vuelta';
@@ -409,25 +423,35 @@ function togglePanel(name) {
   else setLeft(openPanel === name ? null : name);
 }
 const closeDrawers = () => { setLeft(null); setNote(false); };
-let refsApi = null, cajonApi = null, papersApi = null, curlApi = null, lettersApi = null, focusApi = null;
+let refsApi = null, cajonApi = null, papersApi = null, curlApi = null, lettersApi = null, focusApi = null, cuadernosApi = null;
 
 /* ------------------------------------------------------------------ */
 /* Hojas: dar vuelta, tomar otra, cambiar de cara                      */
 /* ------------------------------------------------------------------ */
 const animOn = () => !!(THEME && THEME.anim) && !reduceMotion();
 
-// la hoja gira sobre su borde largo al pasar del frente al dorso; entre hojas desliza
+// Pasar del frente al dorso es dar vuelta la hoja del cuaderno: gira sobre el espiral (el borde donde está el espiral) y queda su otra cara;
+// entre hojas distintas (del dorso al frente de la que sigue) la página se desliza.
 async function changeFace(kind, change) {
   const wrap = $('.sheet-wrap');
   if (!animOn() || !wrap.animate) { change(); return; }
-  const dx = kind === 'next' ? 28 : -28;
-  const out = kind === 'flip' ? [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(88deg)' }] : [{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: `translateX(${-dx}px)` }];
-  const inn = kind === 'flip' ? [{ transform: 'rotateY(-88deg)' }, { transform: 'rotateY(0deg)' }] : [{ opacity: 0, transform: `translateX(${dx}px)` }, { opacity: 1, transform: 'translateX(0)' }];
   try {
-    await wrap.animate(out, { duration: kind === 'flip' ? 170 : 110, easing: 'ease-in' }).finished;
-    change();
-    await wrap.animate(inn, { duration: kind === 'flip' ? 230 : 170, easing: 'cubic-bezier(.23,1,.32,1)' }).finished;
-  } catch { change(); }
+    if (kind === 'flip') {
+      const from = wrap.dataset.side === 'back' ? 'back' : 'front'; // desde qué cara se gira
+      const sgn = from === 'front' ? -1 : 1;                        // el espiral está a la izquierda en el frente y a la derecha en el dorso
+      wrap.style.transformOrigin = from === 'front' ? '0 50%' : '100% 50%';
+      await wrap.animate([{ transform: 'rotateY(0deg)', filter: 'brightness(1)' }, { transform: `rotateY(${sgn * 88}deg)`, filter: 'brightness(.7)' }], { duration: 230, easing: 'cubic-bezier(.5,0,.8,.4)' }).finished;
+      change(); // acá ya cambió la cara y el espiral pasó al otro lado
+      wrap.style.transformOrigin = from === 'front' ? '100% 50%' : '0 50%';
+      await wrap.animate([{ transform: `rotateY(${-sgn * 88}deg)`, filter: 'brightness(.7)' }, { transform: 'rotateY(0deg)', filter: 'brightness(1)' }], { duration: 300, easing: 'cubic-bezier(.2,.7,.3,1)' }).finished;
+      wrap.style.transformOrigin = '';
+    } else {
+      const dx = kind === 'next' ? 28 : -28;
+      await wrap.animate([{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: `translateX(${-dx}px)` }], { duration: 110, easing: 'ease-in' }).finished;
+      change();
+      await wrap.animate([{ opacity: 0, transform: `translateX(${dx}px)` }, { opacity: 1, transform: 'translateX(0)' }], { duration: 170, easing: 'cubic-bezier(.23,1,.32,1)' }).finished;
+    }
+  } catch { wrap.style.transformOrigin = ''; change(); }
 }
 function goPage(p) {
   const L = writer.layout;
@@ -589,7 +613,7 @@ function setupVersions() {
 function editorSource() {
   const L = writer.layout;
   return {
-    sheets: L.sheets, pages: L.pages,
+    sheets: L.sheets, pages: L.pages, fmt: FMT,
     render: (i) => new Promise((res) => { const c = document.createElement('canvas'); writer.renderPageTo(c, i, PRINT_DPI_PPM); c.toBlob(res, 'image/jpeg', 0.95); }),
   };
 }
@@ -900,8 +924,15 @@ async function init() {
     S: () => S, saveSettings, writer: () => writer, LS, toast, ask, busy, unbusy, get printflow() { return printflow; }, sound, animOn, isMobile,
     paperBlob: async (id) => papersApi?.imageBlob(id),
     onOpenDialog: () => { lastDeletedVersion = null; renderVersions(); },
+    onFormat: () => { if (writer) { writer.cssW = 0; fit(); } },
   });
   focusApi = setupFocus({ writer: () => writer, toast, animOn, refit: () => fit() });
+  cuadernosApi = setupCuadernos({
+    lettersApi: () => lettersApi, writer: () => writer, S: () => S, animOn, toast,
+    fit: () => { $('#scroller').scrollTo({ top: 0 }); fit(); },
+    sheetRect: () => { const r = $('#sheet').getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, width: r.width, height: r.height }; },
+    focusSheet: () => { if (!isMobile()) $('#cap').focus({ preventScroll: true }); },
+  });
   refsApi = setupRefs({
     S: () => S, saveSettings, writer: () => writer, lib, toast, ask, isMobile, LS,
     inFocus: () => false, isNoteOpen: () => noteOpen, openNote: () => setNote(true), closeNote: () => setNote(false), syncControls,
@@ -938,6 +969,7 @@ async function init() {
     if (e.key !== 'Escape' || document.querySelector('dialog[open]')) return;
     if (lettersApi?.closePops()) return;
     if (refsApi?.peekOpen()) return; // la vista de cerca maneja su propio Esc
+    if (cuadernosApi?.isOpen()) { cuadernosApi.closeMesa(); return; }
     if (cajonApi?.escape()) { $('.dock-btn[data-panel="cab"]')?.focus(); return; }
     if (openPanel) { const b = $(`.dock-btn[data-panel="${openPanel}"]`); setLeft(null); b?.focus(); }
     else if (noteOpen) { setNote(false); $('.dock-btn[data-panel="note"]')?.focus(); }
@@ -964,7 +996,7 @@ async function init() {
   setupNotice();
   viewReady = true;
 
-  window.__pyl = { writer, lib, get S() { return S; }, reloadGlyphs, setView, printJobs: (mode) => printJobs(writer.layout.sheets, writer.layout.pages, mode) };
+  window.__pyl = { openMis: () => lettersApi.openDialog(), writer, lib, get S() { return S; }, reloadGlyphs, setView, printJobs: (mode) => printJobs(writer.layout.sheets, writer.layout.pages, mode) };
 
   if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !location.hostname.includes('localhost')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

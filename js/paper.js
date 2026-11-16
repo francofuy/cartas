@@ -1,5 +1,5 @@
 // Dibujo de la hoja (A4 en mm). Todo se escala con "ppm" = píxeles por milímetro.
-import { PAGE_W, PAGE_H } from './template.js';
+import { PW as PAGE_W, PH as PAGE_H } from './format.js';
 import { mulberry32 } from './util.js';
 
 export const PAGE_GEOM = { top: 22, bottom: 12, right: 14, leftFree: 18 };

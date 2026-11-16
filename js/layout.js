@@ -2,7 +2,7 @@
 // Todo es determinista (hash de semilla + posición), así nada "salta" al re-dibujar.
 import { hash } from './util.js';
 import { normalizeChar } from './chars.js';
-import { PAGE_W, PAGE_H } from './template.js';
+import { PW as PAGE_W, PH as PAGE_H } from './format.js';
 import { PAGE_GEOM, textLeft } from './paper.js';
 
 export function geometry(S) {
