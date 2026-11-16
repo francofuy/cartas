@@ -418,8 +418,8 @@ input[type="text"] { flex: 1; min-width: 0; }
   .scroller { scroll-behavior: auto; }
 }
 
-/* Cuando el dock queda sobre la hoja (celular o ventana angosta) el vidrio fino no alcanza: con letras claras y papel claro no se leía.
-   Ahí usa el mismo cuerpo del vidrio de los paneles (oscuro y más opaco, texto claro; en temas claros, claro con texto oscuro). */
+/* Cuando el dock queda sobre la hoja (celular o ventana angosta) con letras claras, el vidrio casi transparente no alcanza sobre papel claro.
+   Se le suma un velo oscuro y translúcido: sigue siendo transparente (se ven los puntos), pero las letras se leen. */
 @media (max-width: 1180px) {
-  .dock { background: rgb(var(--g-tint-panel) / var(--g-a-panel)); backdrop-filter: blur(var(--g-blur-panel)) saturate(var(--g-sat)); -webkit-backdrop-filter: blur(var(--g-blur-panel)) saturate(var(--g-sat)); color: var(--g-text-panel); }
+  body.dk .dock { background: rgb(14 14 20 / .64); }
 }
