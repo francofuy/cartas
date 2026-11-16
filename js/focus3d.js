@@ -9,10 +9,13 @@ import { PAGE_W as W, PAGE_H as H } from './template.js';
 
 // Valores elegidos en el editor de luz.
 export const LOOK = {
-  luz: { ax: 1, ay: -41, tilt: 0, open: 70, asym: 0, edge: 67, bow: 0, tip: 50, reach: 262, fade: 50, core: 30, coreSize: 45, inten: 80, temp: 2850, sat: 89, dist: 220, falloff: 10,
+  luz: { ax: 1, ay: -41, tilt: 0, open: 70, asym: 0, edge: 67, bow: 0, tip: 22, reach: 262, fade: 50, core: 30, coreSize: 45, inten: 80, temp: 2850, sat: 89, dist: 220, falloff: 10,
     halo: 49, haloOpen: 110, haloSoft: 80, amb: 22, ambTemp: 3300, dk: 82, glow: 10, vig: 49, grain: 7, flicker: 0, flickerSpeed: 3 },
+  barra: { len: 236, thick: 5, z: 11, hw: 18, hh: 10, hd: 9, dark: 75, slit: 100, glow: 8, off: 0 }, // barra de metal negro con una aleta de donde sale la luz
   escena: { rad: 38, rig: 55, wrap: 210, elev: -10, zoom: 61, yaw: 14, camY: -8 }, // camY: a qué altura mira la cámara respecto de la punta (mm); más bajo = se ve más hoja por debajo
 };
+// Al saltar de renglón, la tinta espera este tiempo (s, incluye el salto de la barra) para que la barra enfoque la zona antes de empezar a escribir.
+export const LINE_DELAY = 0.5;
 export const TEX_W_PX = 1400; // ancho de la textura de la hoja (píxeles): suficiente para leer la letra sin gastar de más
 
 export function webglOk() {
@@ -121,6 +124,57 @@ export function createFocus3D(h) {
     const v = new T.Vector3(0, -8, 0).project(camera), gc = kelvin(l.temp - 300).map((x) => Math.round(x * 255)).join(' ');
     glowEl.style.setProperty('--gc', gc); glowEl.style.transform = `translate(${((v.x + 1) / 2 * innerWidth).toFixed(1)}px, ${((1 - v.y) / 2 * innerHeight).toFixed(1)}px)`;
     glowEl.style.opacity = ((l.glow / 100) * (0.6 + 0.4 * Math.min(1, l.inten / 100)) * flick * e).toFixed(2);
+    updateBar(e, true, 1);
+  }
+
+
+  /* ---------- la barra de metal con la aleta por donde sale la luz ---------- */
+  let barGroup, lampGroup, slitMat, glowSpr, barMats = [], slitY = 0, zc = 0;
+  function buildBar(renderer) {
+    const B = LOOK.barra;
+    let envMap = null;
+    try {
+      const ec = document.createElement('canvas'); ec.width = 512; ec.height = 256; const c = ec.getContext('2d'), g = c.createLinearGradient(0, 0, 0, 256);
+      g.addColorStop(0, '#565a66'); g.addColorStop(0.45, '#17181d'); g.addColorStop(1, '#08080b'); c.fillStyle = g; c.fillRect(0, 0, 512, 256);
+      for (const [x, y, w, a] of [[70, 50, 110, 0.7], [340, 60, 130, 0.55], [210, 170, 170, 0.5], [470, 150, 90, 0.35]]) { const r = c.createRadialGradient(x, y, 2, x, y, w); r.addColorStop(0, `rgba(255,228,184,${a})`); r.addColorStop(1, 'rgba(255,228,184,0)'); c.fillStyle = r; c.fillRect(x - w, y - w, w * 2, w * 2); }
+      const et = new T.CanvasTexture(ec); et.mapping = T.EquirectangularReflectionMapping; et.encoding = T.sRGBEncoding;
+      envMap = new T.PMREMGenerator(renderer).fromEquirectangular(et).texture;
+    } catch { envMap = null; }
+    const sc = document.createElement('canvas'); sc.width = 64; sc.height = 256; { const c = sc.getContext('2d'); c.fillStyle = '#808080'; c.fillRect(0, 0, 64, 256); for (let i = 0; i < 90; i++) { const v = 90 + Math.random() * 90; c.fillStyle = `rgb(${v},${v},${v})`; c.fillRect(Math.random() * 64, 0, 0.6 + Math.random() * 1.2, 256); } }
+    const brushed = new T.CanvasTexture(sc); brushed.wrapS = brushed.wrapT = T.RepeatWrapping;
+    const d = B.dark / 100;
+    const mk = () => { const m = new T.MeshStandardMaterial({ color: new T.Color(0x34353c).multiplyScalar(1 - 0.55 * d), metalness: 0.9, roughness: 0.4, envMap, envMapIntensity: 1.8 * (1 - 0.88 * d), bumpMap: brushed, bumpScale: 0.12 }); patchMat(m); barMats.push(m); return m; };
+    const glowC = document.createElement('canvas'); glowC.width = glowC.height = 128; { const c = glowC.getContext('2d'), g = c.createRadialGradient(64, 64, 2, 64, 64, 64); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.25, 'rgba(255,255,255,.45)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, 0, 128, 128); }
+    const shC = document.createElement('canvas'); shC.width = 8; shC.height = 64; { const c = shC.getContext('2d'), g = c.createLinearGradient(0, 0, 0, 64); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.5, 'rgba(0,0,0,.6)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(0, 0, 8, 64); }
+    barGroup = new T.Group(); lampGroup = new T.Group(); scene.add(barGroup, lampGroup);
+    zc = Math.max(B.z, B.hd / 2 + 1.5);
+    const rod = new T.Mesh(new T.CylinderGeometry(B.thick / 2, B.thick / 2, B.len, 40), mk()); rod.rotation.z = Math.PI / 2; barGroup.add(rod);
+    for (const sx of [-1, 1]) {
+      const post = new T.Mesh(new T.BoxGeometry(7, B.thick + 8, zc + 2), mk()); post.position.set(sx * (B.len / 2 - 3), 0, -zc / 2 + 1); barGroup.add(post);
+      const cap = new T.Mesh(new T.CylinderGeometry(B.thick / 2 + 1.2, B.thick / 2 + 1.2, 3, 32), mk()); cap.rotation.z = Math.PI / 2; cap.position.set(sx * (B.len / 2 + 1.5), 0, 0); barGroup.add(cap);
+    }
+    // aleta: una chapa finita con un labio hacia adelante, arriba, donde está la ranura
+    const hh = B.hh / 2, hd = B.hd / 2, t = 1.3, lip = 2.4, sh = new T.Shape();
+    [[-t, -hh], [t, -hh], [t, hh - lip], [hd, hh - lip], [hd, hh], [-t, hh]].forEach((q, i) => (i ? sh.lineTo(q[0], q[1]) : sh.moveTo(q[0], q[1]))); sh.closePath();
+    const eg = new T.ExtrudeGeometry(sh, { depth: B.hw, bevelEnabled: true, bevelSize: 0.5, bevelThickness: 0.5, bevelSegments: 3, curveSegments: 8 }); eg.translate(0, 0, -B.hw / 2); eg.rotateY(-Math.PI / 2);
+    lampGroup.add(new T.Mesh(eg, mk()));
+    slitMat = new T.MeshBasicMaterial({ color: 0xffe2b0, toneMapped: false }); barMats.push(slitMat);
+    const slit = new T.Mesh(new T.PlaneGeometry(B.hw * 0.82, Math.min(1.5, lip * 0.62)), slitMat); slit.position.set(0, hh - lip / 2, hd + 0.8); lampGroup.add(slit);
+    slitY = hh - lip / 2;
+    glowSpr = new T.Sprite(new T.SpriteMaterial({ map: new T.CanvasTexture(glowC), color: 0xffd9a0, blending: T.AdditiveBlending, transparent: true, depthWrite: false }));
+    glowSpr.position.set(0, slitY + 1.5, hd + 3.5); glowSpr.scale.set(16 + B.hw * 0.8, 16 + B.hw * 0.8, 1); lampGroup.add(glowSpr);
+    const shadow = new T.Mesh(new T.PlaneGeometry(B.len, B.thick + 26), new T.MeshBasicMaterial({ map: new T.CanvasTexture(shC), transparent: true, opacity: 0.55, depthWrite: false })); shadow.position.set(0, 0, -zc + 0.25); barGroup.add(shadow); barMats.push(shadow.material);
+    barGroup.traverse((o) => { if (o.material) o.material.userData.o = o.material.opacity; }); lampGroup.traverse((o) => { if (o.material) o.material.userData.o = o.material.opacity; });
+  }
+  function updateBar(e, on, flick) {
+    const B = LOOK.barra, l = LOOK.luz, y = l.ay - B.off - slitY, vis = smooth(0.5, 1, e);
+    barGroup.visible = lampGroup.visible = vis > 0;
+    barGroup.position.set(group.position.x, y, zc); lampGroup.position.set(l.ax, y, zc);
+    const k = kelvin(Math.max(2200, l.temp + 500)), lit = (on ? B.slit / 100 : 0.04) * flick;
+    slitMat.color.setRGB(Math.min(1, k[0] * lit + 0.1 * lit), Math.min(1, k[1] * lit + 0.08 * lit), Math.min(1, k[2] * lit));
+    glowSpr.material.color.setRGB(k[0], k[1] * 0.92, k[2] * 0.8); glowSpr.material.opacity = on ? (B.glow / 100) * Math.min(1, 0.4 + B.slit / 160) * vis : 0;
+    for (const m of barMats) { if (m === glowSpr.material || m === slitMat) continue; m.transparent = vis < 1 || m.userData.o < 1; m.opacity = (m.userData.o ?? 1) * vis; }
+    slitMat.transparent = vis < 1; slitMat.opacity = vis;
   }
 
   /* ---------- armado de la escena ---------- */
@@ -144,6 +198,7 @@ export function createFocus3D(h) {
     spot = new T.SpotLight(0xffcf98, 1, 430, 1.5, 0.15, 2); scene.add(spot, spot.target);
     halo = new T.SpotLight(0xffa862, 0.4, 760, 1.5, 0.15, 1.4); scene.add(halo, halo.target);
     flat = new T.HemisphereLight(0xfff8ec, 0xa8a8b4, 1.75); scene.add(flat); // luz pareja del arranque: la hoja se ve como la hoja normal
+    buildBar(renderer);
     canvas.addEventListener('pointerdown', (e) => { e.preventDefault(); $('#cap')?.focus({ preventScroll: true }); });
     addEventListener('resize', () => { if (running) resize(); });
     ready = true;

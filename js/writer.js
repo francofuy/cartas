@@ -33,6 +33,7 @@ export class Writer {
     this.onStroke = null;   // (char, durSeconds) => void  (para el sonido)
     this.onErase = null;
     this.onDraw = null;     // () => void  (el modo foco 3D actualiza su textura)
+    this.lineDelay = 0;     // pausa (s) al saltar de renglón, en lugar de la de siempre; el modo foco 3D la usa para que la barra enfoque antes de escribir
     this.noCaret = false;   // sin cursor titilante sobre la hoja
     this.ghostText = null;  // texto de referencia que se ve tenue sobre la hoja
     this.ghostLayout = null;
@@ -180,7 +181,8 @@ export class Writer {
       if (c === ' ' || c === '\n' || c === '\t' || c === '\f' || c === '\v') {
         out.push({ t0: tcur, dur: 0, drawn: true, ws: true });
         // entre palabras la mano se despega un instante; al cambiar de renglón o de hoja, un poco más
-        tcur += (c === '\f' || c === '\v' ? 0.5 : c === '\n' ? 0.38 : 0.07 + 0.09 * r) / hurry;
+        tcur += c === '\n' && this.lineDelay > 0 ? this.lineDelay : (c === '\f' || c === '\v' ? 0.5 : c === '\n' ? 0.38 : 0.07 + 0.09 * r) / hurry;
+        out[out.length - 1].end = tcur; // cuándo puede empezar la letra que sigue (así la pausa del renglón no se pierde al tipear despacio)
         continue;
       }
       const vs = this.lib.variants(normalizeChar(c));
@@ -199,7 +201,7 @@ export class Writer {
   // después de borrar texto que todavía no se había escrito, la fila de espera se acorta
   recomputeNext(t) {
     let last = t;
-    for (const tm of this.times) if (tm) last = Math.max(last, tm.t0 + tm.dur * 0.55 + 0.04);
+    for (const tm of this.times) if (tm) last = Math.max(last, tm.end ?? tm.t0 + tm.dur * 0.55 + 0.04);
     this.nextT = last;
   }
 

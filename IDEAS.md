@@ -55,3 +55,6 @@ Para que la luz tenga de dónde salir: una barra de metal delgada cruza la hoja 
 
 ### Barra de luz, segunda ronda
 Pieza de luz más chica (26×11×10 mm) y oscura (metal al 75 % de oscuridad, detrás de la luz); seis formas para elegir en el prototipo: cuadrado pequeño, bloque con chaflán, pastilla, cuña, anillo y aleta. El salto de renglón ya es más seco y rápido en la app (0,13 s con un pequeño rebote, estilo carro de máquina de escribir). La barra todavía no está en la app.
+
+### Barra de luz en la app (hecho)
+Barra de metal negro con la "aleta" y la luz en V (valores del editor: tip 22, barra 236×5 mm, aleta 18×10×9, oscuridad 75, ranura 100, resplandor 8). Está en LOOK de js/focus3d.js. Al saltar de renglón la barra se corre rápido y la tinta espera 0,5 s antes de empezar (LINE_DELAY en js/focus3d.js).

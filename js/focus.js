@@ -1,7 +1,7 @@
 // Modo foco: se apaga todo (barra, herramientas, botones) y una luz tibia acompaña la punta de la lapicera, siempre un poco más abajo
 // de donde escribís. Se sale con Esc, con Ctrl + . o con el botón que aparece al mover el mouse.
 import { $ } from './util.js';
-import { createFocus3D, webglOk, TEX_W_PX } from './focus3d.js';
+import { createFocus3D, webglOk, TEX_W_PX, LINE_DELAY } from './focus3d.js';
 
 export function setupFocus({ writer, toast, animOn, refit }) {
   const fx = $('#focus-fx'), exit = $('#focus-exit'), btn = $('#btn-focus');
@@ -40,12 +40,12 @@ export function setupFocus({ writer, toast, animOn, refit }) {
     if (webglOk()) { // la hoja en 3D, como en una máquina de escribir; si algo falla, queda la luz simple
       try {
         const rect = sheetRect(), clip = scrollRect(); // dónde está la hoja normal, antes de cambiarle el tamaño
-        const w = writer(); if (w) w.noCaret = true;
+        const w = writer(); if (w) { w.noCaret = true; w.lineDelay = LINE_DELAY; }
         f3 = f3 || createFocus3D({ writer, animOn, viewFactor: () => vf });
         await f3.start({ rect, clip, dur: 1.35 }); use3d = true;
         // la hoja 3D ya está encima y es igual a la normal: se esconde la normal y se pasa a la textura grande
         setTimeout(() => { if (!on || !use3d) return; document.body.classList.add('f3-hide'); texBoost = true; refit?.(); }, 300);
-      } catch (e) { console.warn('Modo foco 3D no disponible, uso la luz simple.', e); const w = writer(); if (w) w.noCaret = false; }
+      } catch (e) { console.warn('Modo foco 3D no disponible, uso la luz simple.', e); const w = writer(); if (w) { w.noCaret = false; w.lineDelay = 0; } }
     }
     if (!on) { moving = false; return; }
     if (!use3d) { fx.classList.add('on'); loop(); }
@@ -64,7 +64,7 @@ export function setupFocus({ writer, toast, animOn, refit }) {
       // se mide dónde va a quedar la hoja normal (con su tamaño de siempre) y la 3D viaja hasta ahí
       texBoost = false; refit?.(); const rect = sheetRect(), clip = scrollRect(); texBoost = true; refit?.();
       await f3.stop({ rect, clip, dur: 1.0 });
-      texBoost = false; refit?.(); document.body.classList.remove('f3-hide'); const w = writer(); if (w) w.noCaret = false;
+      texBoost = false; refit?.(); document.body.classList.remove('f3-hide'); const w = writer(); if (w) { w.noCaret = false; w.lineDelay = 0; }
     }
     $('#cap')?.focus({ preventScroll: true });
     moving = false;
