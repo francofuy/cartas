@@ -12,7 +12,8 @@ como app en PC y celular y funciona sin conexión. Tu letra y tus cartas se guar
    letra. Podés repetir tantas veces como quieras: cada foto suma variantes y el texto las alterna.
 2. **Escribir** → tipeá y la hoja se va "escribiendo" con tu letra (trazo animado con ritmo humano).
    La barra de la izquierda abre cada ajuste: lapicera, escritura, papel y letra.
-3. **Hojas con dorso** → «Dar vuelta» gira la hoja y seguís en el dorso; «Hoja nueva» toma otra hoja del montón
+3. **Sonido** → al escribir suena una lapicera muy suave, distinta en cada instrumento y nunca igual a sí misma; se regula o se apaga en «Lapicera».
+4. **Hojas con dorso** → «Dar vuelta» gira la hoja y seguís en el dorso; «Hoja nueva» toma otra hoja del montón
    (sin dorso). También podés dar vuelta la hoja con el gesto: mantené apretada la esquina inferior (derecha = siguiente, izquierda = anterior) y arrastrá; la hoja se despega como la de un cuaderno. Cuando una hoja se llena, la carta sigue en el dorso o en otra hoja, a tu elección.
 4. **Archivero** → un cajón en una esquina que se abre al pasar el cursor y muestra las cartas de lomo (por carpeta). Al hacer clic en una se muestra de frente para elegirla y arrastrarla a la referencia; también se buscan, se leen, se editan y se exportan o importan.
    La referencia se ve al costado, en una ventana flotante o «fantasma» sobre la hoja, con letra legible o con tu letra.
@@ -31,6 +32,7 @@ js/writer.js        texto, ritmo de escritura, dibujo de la hoja y modo fantasma
 js/layout.js        renglones, caras (frente/dorso), hojas, imperfecciones deterministas
 js/refs.js          datos de las cartas y referencia (costado / flotante / fantasma); js/cajon.js: el cajón de la esquina
 js/curl.js          gesto de la esquina para dar vuelta la hoja
+js/sound.js         sonido suave de la lapicera (Web Audio, sin archivos)
 js/glyphs.js        biblioteca de letras, lapiceras (sprites) y animación de trazo
 js/skeleton.js      esqueleto de cada letra -> orden en que se dibuja
 js/capture.js       foto -> homografía -> letras sueltas (solo tinta)

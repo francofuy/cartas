@@ -13,6 +13,7 @@ import { setupPapers } from './papers.js';
 import { setupRefs } from './refs.js';
 import { setupCajon } from './cajon.js';
 import { setupCurl } from './curl.js';
+import { PenSound } from './sound.js';
 import { exportBackup, importBackup, describe as describeBackup } from './backup.js';
 
 /* ------------------------------------------------------------------ */
@@ -42,6 +43,8 @@ const DEFAULTS = {
   refMode: 'panel',      // dónde se ve la referencia: 'panel' (al costado) | 'float' (ventana) | 'ghost' (tenue sobre la hoja)
   refFont: 'legible',    // 'legible' | 'hand' (con mi letra)
   ghostAlpha: 0.3,
+  sound: true,           // sonido suave de la lapicera al escribir
+  soundVol: 0.5,
 };
 function loadSettings() {
   const saved = LS.get('pyl.settings', {});
@@ -104,8 +107,18 @@ async function reloadGlyphs() {
 /* ------------------------------------------------------------------ */
 const INK_COLORS = [['Azul', '#1d2f8f'], ['Negro', '#16171c'], ['Azul medio', '#2f6fb5'], ['Rojo', '#a8222c'], ['Verde', '#1f5a3a'], ['Sepia', '#5a3a22'], ['Grafito', '#3a3a40']];
 
+const sound = new PenSound();
+const previewSound = debounce(() => sound.preview(S.instrument), 180);
+function applySound() {
+  sound.configure({ enabled: S.sound, volume: S.soundVol });
+  const v = $('[data-s="soundVol"]'); if (v) v.disabled = !S.sound;
+}
 function settingChanged(path) {
   saveSettings();
+  if (path === 'sound' || path === 'soundVol' || path === 'instrument') {
+    applySound();
+    if (S.sound && (path !== 'sound' || S.sound)) previewSound(); // se oye cómo queda
+  }
   if (path === 'ghostAlpha') refsApi?.refreshGhost();
   if (path === 'animate' && !S.animate) writer.settle();
   if (LAYOUT_KEYS.has(path)) writer.relayout(); else writer.inkDirty = true;
@@ -124,6 +137,7 @@ const FORMAT = {
   imperfection: pct,
   speed: (v) => `×${fmt(v)}`,
   ghostAlpha: pct,
+  soundVol: pct,
   'paper.lineSpacing': (v) => `${fmt(v)} mm`,
   'paper.grain': pct,
   'paper.lineWidth': (v) => `${fmt(v, 2)} mm`,
@@ -168,6 +182,7 @@ function syncControls() {
   ['#inst-chips', '#overflow-chips', '#refmode-chips', '#source-chips', '#ink-swatches'].forEach((id) => $(id)._refresh?.());
   papersApi?.sync();
   ['#paper-swatches', '#line-swatches', '#margin-swatches', '#deco-swatches'].forEach((id) => $(id)?._refresh?.());
+  const sv = $('[data-s="soundVol"]'); if (sv) sv.disabled = !S.sound;
 }
 
 function setupResets() {
@@ -938,6 +953,11 @@ async function init() {
 
   writer = new Writer($('#sheet'), lib, () => S);
   writer.onChange = updatePager;
+  writer.onStroke = (ch, dur) => sound.stroke(S.instrument, ch, dur);
+  writer.onErase = (n) => sound.erase(n);
+  applySound();
+  // los navegadores solo dejan sonar después de un gesto: se destraba con el primer toque o tecla
+  ['pointerdown', 'keydown'].forEach((ev) => addEventListener(ev, () => { if (S.sound) sound.unlock(); }, { once: true, capture: true }));
   buildControls();
   setupInput();
   setupNote();
