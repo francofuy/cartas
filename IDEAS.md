@@ -49,3 +49,6 @@ V de 70°, vértice (1, −41), borde 67, punta 50, alcance 262, núcleo 30/45, 
 
 ### Modo foco 3D: transición y interfaz (hecho)
 El fondo normal (con puntos) se oscurece en vez de pasar a negro; la interfaz queda muy tenue (20 %) y vuelve al pasar el mouse o con el teclado; los botones de vista (Ancho / Hoja entera / De cerca) mueven la cámara; al usar un botón el cursor vuelve a la hoja. La hoja 3D arranca exactamente donde está la hoja normal y viaja hasta su lugar (cámara, curva y luz); al salir hace el camino inverso.
+
+### Barra de luz (prototipo mostrado, aún no está en la app)
+Para que la luz tenga de dónde salir: una barra de metal delgada cruza la hoja de punta a punta, sobre dos soportes, y en el centro tiene una parte semicuadrada con un chaflán y una ranura por donde sale la V. La barra se desplaza con la hoja hacia los costados (queda fija en altura); la parte de la luz queda siempre en la lapicera, como un carro. Acabados: acero cepillado, latón o negro anodizado. La punta de la V se acorta (22 mm) porque ahora hay una fuente visible.
