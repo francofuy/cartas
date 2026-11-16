@@ -54,7 +54,7 @@ float lightMask( int i ) {
 // h = { writer(), animOn() }
 export function createFocus3D(h) {
   let T = null, ready = false, running = false, raf = 0, texDirty = true;
-  let gW = 0, gH = 0, mesh, barEnv = null, bumpTex = null, compiled = false, tn = null, offN = 0, dOffNow = 0;
+  let gW = 0, gH = 0, mesh, barEnv = null, bumpTex = null, compiled = false, tn = null, offN = 0, dOffNow = 0, barLift = 0;
   let renderer, scene, camera, group, geo, base, tex, spot, halo, amb, flat, host, glowEl, vigEl, dimEl, canvasEl;
   let u = 0, uTarget = 0, uDur = 1.3, onArrive = null, pose0 = { d: 300, tx: 0, ty: LOOK.escena.camY }, zoomNow = LOOK.escena.zoom / 100, zoomTarget = zoomNow;
   const U = {}; const rows = []; const NX = 25; let NY = 480;
@@ -113,7 +113,7 @@ export function createFocus3D(h) {
     return [c(k <= 66 ? 255 : 329.698727446 * Math.pow(k - 60, -0.1332047592)), c(k <= 66 ? 99.4708025861 * Math.log(k) - 161.1195681661 : 288.1221695283 * Math.pow(k - 60, -0.0755148492)), c(k >= 66 ? 255 : k <= 19 ? 0 : 138.5177312231 * Math.log(k - 10) - 305.0447927307)]; };
   const toColor = (rgb, sat) => new T.Color(1 + (rgb[0] - 1) * sat, 1 + (rgb[1] - 1) * sat, 1 + (rgb[2] - 1) * sat);
   function applyLight(time, e) {
-    const l = LOOK.luz, lt = smooth(0.2, 1, e), t = rad(l.tilt), dx = Math.sin(t), dy = Math.cos(t), hl = rad(l.open / 2 + l.asym / 2), hr = rad(l.open / 2 - l.asym / 2), s = 0.02 + 0.98 * Math.pow(l.edge / 100, 1.3);
+    const l = LOOK.luz, lt = smooth(0.2, 1, e) * (1 - 0.55 * liftE()), t = rad(l.tilt), dx = Math.sin(t), dy = Math.cos(t), hl = rad(l.open / 2 + l.asym / 2), hr = rad(l.open / 2 - l.asym / 2), s = 0.02 + 0.98 * Math.pow(l.edge / 100, 1.3);
     U.uLA.value[0].set(l.ax, l.ay, dx, dy); U.uLB.value[0].set(Math.max(hl, 0.02), Math.max(hr, 0.02), s, l.reach); U.uLC.value[0].set(l.tip, l.bow / 100, l.core / 100, l.coreSize); U.uLD.value[0].set(l.fade / 100, 1, 0, 0);
     const ho = rad(l.haloOpen / 2), hs = 0.25 + 0.75 * (l.haloSoft / 100);
     U.uLA.value[1].set(l.ax, l.ay, dx, dy); U.uLB.value[1].set(ho, ho, hs, l.reach * 1.5); U.uLC.value[1].set(l.tip * 2, 0, 0, 1); U.uLD.value[1].set(0.8, 1, 0, 0);
@@ -122,7 +122,7 @@ export function createFocus3D(h) {
     const b = (l.inten / 100) * Math.pow(150 / d, 0.45) * 1.25 * att0 / att * flick, sat = l.sat / 100;
     spot.color.copy(toColor(kelvin(l.temp), sat)); spot.intensity = b * lt; spot.distance = cut; spot.decay = dec; spot.position.set(l.ax, l.ay, l.dist); spot.target.position.set(l.ax + dx * 100, l.ay + dy * 100, 0);
     halo.color.copy(toColor(kelvin(l.temp - 500), sat)); halo.intensity = b * lt * (l.halo / 100) * (1.1 - 0.8 * l.dk / 100); halo.position.copy(spot.position); halo.target.position.copy(spot.target.position);
-    amb.color.copy(toColor(kelvin(l.ambTemp), 1)); amb.intensity = (l.amb / 100) * (1 - 0.9 * l.dk / 100) * Math.min(1.5, l.inten / 100) * lt; flat.intensity = 1.75 * (1 - lt);
+    amb.color.copy(toColor(kelvin(l.ambTemp), 1)); amb.intensity = (l.amb / 100) * (1 - 0.9 * l.dk / 100) * Math.min(1.5, l.inten / 100) * lt; flat.intensity = 1.75 * (1 - smooth(0.2, 1, e));
     vigEl.style.opacity = (((l.vig / 100) * (0.45 + 0.55 * l.dk / 100)) * e).toFixed(2); dimEl.style.opacity = e.toFixed(3); vigEl.style.setProperty('--vs', (0.6 + 0.4 * l.dk / 100).toFixed(2)); vigEl.style.setProperty('--grain', (l.grain / 100).toFixed(3));
     const v = new T.Vector3(0, -8, 0).project(camera), gc = kelvin(l.temp - 300).map((x) => Math.round(x * 255)).join(' ');
     glowEl.style.setProperty('--gc', gc); glowEl.style.transform = `translate(${((v.x + 1) / 2 * innerWidth).toFixed(1)}px, ${((1 - v.y) / 2 * innerHeight).toFixed(1)}px)`;
@@ -170,10 +170,13 @@ export function createFocus3D(h) {
     const shadow = new T.Mesh(new T.PlaneGeometry(B.len, B.thick + 26), new T.MeshBasicMaterial({ map: new T.CanvasTexture(shC), transparent: true, opacity: 0.55, depthWrite: false })); shadow.position.set(0, 0, -zc + 0.25); barGroup.add(shadow); barMats.push(shadow.material);
     barGroup.traverse((o) => { if (o.material) o.material.userData.o = o.material.opacity; }); lampGroup.traverse((o) => { if (o.material) o.material.userData.o = o.material.opacity; });
   }
+  const liftE = () => barLift * barLift * (3 - 2 * barLift);
   function updateBar(e, on, flick) {
     const B = LOOK.barra, l = LOOK.luz, y = l.ay - B.off - slitY, vis = smooth(0.5, 1, e);
     barGroup.visible = lampGroup.visible = vis > 0;
-    barGroup.position.set(group.position.x, y, zc); lampGroup.position.set(l.ax, y, zc);
+    // al pasar una hoja la barra se aparta: sube por encima del borde de arriba de la hoja y vuelve cuando la hoja ya cayó
+    const lift = liftE() * Math.max(0, group.position.y + H / 2 + 20 - y), yy = y + lift;
+    barGroup.position.set(group.position.x, yy, zc); lampGroup.position.set(l.ax, yy, zc);
     const k = kelvin(Math.max(2200, l.temp + 500)), lit = (on ? B.slit / 100 : 0.04) * flick;
     slitMat.color.setRGB(Math.min(1, k[0] * lit + 0.1 * lit), Math.min(1, k[1] * lit + 0.08 * lit), Math.min(1, k[2] * lit));
     glowSpr.material.color.setRGB(k[0], k[1] * 0.92, k[2] * 0.8); glowSpr.material.opacity = on ? (B.glow / 100) * Math.min(1, 0.4 + B.slit / 160) * vis : 0;
@@ -264,7 +267,7 @@ export function createFocus3D(h) {
   const pen = { x: 0, y: 0 }; let first = true, prevX = 0, last = 0, lastTy = 0, ret = null;
   function frame(now) {
     raf = 0; if (!running) return;
-    const w = h.writer(), c = w._pen, reduce = !h.animOn(), dt = Math.min(0.05, (now - last) / 1000);
+    const w = h.writer(), c = w._pen, reduce = !h.animOn(), dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
     if (c && c.page === w.page) {
       if (first) { pen.x = c.x; pen.y = c.y; lastTy = c.y; first = false; prevX = pen.x; }
       else {
@@ -291,6 +294,7 @@ export function createFocus3D(h) {
     group.rotation.set(0, yaw, roll);
     group.position.set(lx, ly, 0).applyEuler(group.rotation).negate().multiplyScalar(e); // la punta queda siempre en el origen
     group.position.x += dOff * e;
+    { const want = tn && tn.leaf && tn.t < 0.97 ? 1 : 0; barLift = want ? Math.min(1, barLift + dt / 0.2) : Math.max(0, barLift - dt / 0.3); }
     if (tn) stepTurn(dt, dOff);
     const dEnd = endDist(), d = Math.exp(lerp(Math.log(pose0.d), Math.log(dEnd), e)), el = lerp(0, T.MathUtils.degToRad(P.elev), e), tx = lerp(pose0.tx, 0, e), ty = lerp(pose0.ty, LOOK.escena.camY, e);
     camera.position.set(tx, ty + d * Math.sin(el), d * Math.cos(el)); camera.lookAt(tx, ty, 0); camera.updateMatrixWorld();
@@ -333,11 +337,12 @@ export function createFocus3D(h) {
     mesh.visible = false; if (aoMesh) aoMesh.visible = false;
     h.sound?.fold?.();
     change(); // se cambia de cara de verdad (la hoja de verdad queda escondida hasta que termine el giro)
-    await new Promise((res) => { tn = { props, mats, leaf: L2, t: 0, dur: leaf ? 0.9 : 0.62, res, age: 0 }; });
+    await new Promise((res) => { tn = { props, mats, leaf: L2, t: 0, dur: leaf ? 0.9 : 0.62, res, age: 0, lead: leaf ? 0.12 : 0 }; });
   }
   const tEase = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
   function stepTurn(dt, dOff) {
-    tn.t = Math.min(1, tn.t + dt / tn.dur); tn.age += dt;
+    if (tn.lead > 0) tn.lead -= dt; else tn.t = Math.min(1, tn.t + dt / tn.dur);
+    tn.age += dt;
     const base = group.position.x - dOff * 1;
     for (const p of tn.props) { p.root.position.set(base + (p.off - offN) , group.position.y, group.position.z); p.root.rotation.copy(group.rotation); }
     if (tn.leaf) {
@@ -346,7 +351,7 @@ export function createFocus3D(h) {
       lf.me.material = Math.abs(a) > 90 ? lf.mB : lf.mF; // pasados los 90° se ve el dorso (la imagen ya está espejada para que se lea bien)
     }
     // termina cuando el giro acabó y la cámara ya llegó a la nueva página (o si tarda demasiado)
-    if ((tn.t >= 1 && Math.abs(dOff) < 0.8) || tn.age > 3) {
+    if ((tn.t >= 1 && Math.abs(dOff) < 0.8 && barLift < 0.03) || tn.age > 3) {
       const done = tn.res; mesh.visible = true; if (aoMesh) aoMesh.visible = true;
       for (const p of tn.props) scene.remove(p.root);
       for (const m of tn.mats) { if (m.map) m.map.dispose(); m.dispose(); }
@@ -365,7 +370,7 @@ export function createFocus3D(h) {
     async start({ rect, clip, dur } = {}) {
       await this.prepare();
       if (gW !== W || gH !== H) { geo.dispose(); geo = new T.PlaneGeometry(W, H, NX - 1, NY - 1); base = geo.attributes.position.array.slice(); gW = W; gH = H; mesh.geometry = geo; elKey = ''; buildRings(); } // la hoja cambió de tamaño (A4 / A5)
-      running = true; first = true; ret = null; tn = null; mesh.visible = true; texDirty = true; last = performance.now(); u = 0; uTarget = 1; uDur = dur || 1.3; onArrive = null;
+      running = true; first = true; ret = null; tn = null; barLift = 0; mesh.visible = true; texDirty = true; last = performance.now(); u = 0; uTarget = 1; uDur = dur || 1.3; onArrive = null;
       { const fw = h.writer().layout?.faces[h.writer().page]; offN = fw && fw.side === 'back' ? -W : 0; }
       zoomNow = zoomTarget = LOOK.escena.zoom / 100 * (h.viewFactor?.() || 1);
       host.hidden = false; resize(); setPose0(rect || { left: innerWidth * 0.2, top: 0, width: innerWidth * 0.6, height: innerWidth * 0.6 * H / W });

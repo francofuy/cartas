@@ -73,3 +73,6 @@ En el modo foco 3D el espiral es de verdad: aros de metal que siguen la curva de
 
 ### Foco: entrada sin parpadeo y giros de hoja en 3D (hecho, js/focus3d.js)
 La escena 3D se prepara antes (al acercar el mouse al botón Foco o cuando la app está ociosa): librería, shaders y texturas. Al entrar, el primer cuadro 3D se dibuja antes de mostrarse y la hoja normal se esconde en el mismo instante; al salir, vuelve primero la hoja normal y recién después se apaga la 3D. Dentro del foco, dar vuelta y hoja nueva giran la hoja en 3D alrededor del espiral (la cámara se corre de una página a la otra), con el mismo criterio que la vista normal.
+
+### La barra de luz se aparta al pasar la hoja (hecho, js/focus3d.js)
+Al dar vuelta o pasar a otra hoja en el modo foco, la barra de metal (con la aleta) sube por encima del borde de arriba de la hoja y la luz en V baja a casi la mitad; la hoja espera 0,12 s para que la barra ya esté fuera. Cuando la hoja terminó de caer, la barra vuelve a su lugar y la luz a su fuerza. Así la hoja nunca atraviesa la barra. Si se quisiera que en vez de subir se desvanezca (idea 2), el cambio está en updateBar.
