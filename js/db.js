@@ -67,39 +67,17 @@ export async function clearGlyphs() {
 }
 
 /* ---------- exportar / importar ---------- */
-async function gzip(bytes) {
+export async function gzip(bytes) {
   if (typeof CompressionStream === 'undefined') return bytes;
   const cs = new CompressionStream('gzip');
   const w = cs.writable.getWriter(); w.write(bytes); w.close();
   return new Uint8Array(await new Response(cs.readable).arrayBuffer());
 }
-async function gunzip(bytes) {
+export async function gunzip(bytes) {
   if (bytes[0] !== 0x1f || bytes[1] !== 0x8b) return bytes;
   const ds = new DecompressionStream('gzip');
   const w = ds.writable.getWriter(); w.write(bytes); w.close();
   return new Uint8Array(await new Response(ds.readable).arrayBuffer());
-}
-
-export async function exportHand() {
-  const list = await allGlyphs();
-  const data = {
-    app: 'puno-y-letra', version: 1, exportedAt: new Date().toISOString(),
-    glyphs: list.map((g) => ({ char: g.char, w: g.w, h: g.h, pxmm: g.pxmm, base: g.base, source: g.source, page: g.page, a: bytesToBase64(g.alpha) })),
-  };
-  const bytes = new TextEncoder().encode(JSON.stringify(data));
-  const gz = await gzip(bytes);
-  return new Blob([gz], { type: 'application/octet-stream' });
-}
-
-export async function importHand(file, { replace = false } = {}) {
-  const raw = new Uint8Array(await file.arrayBuffer());
-  const text = new TextDecoder().decode(await gunzip(raw));
-  const data = JSON.parse(text);
-  if (data.app !== 'puno-y-letra' || !Array.isArray(data.glyphs)) throw new Error('El archivo no parece ser de Puño y Letra.');
-  if (replace) await clearGlyphs();
-  const list = data.glyphs.map((g) => ({ char: g.char, w: g.w, h: g.h, pxmm: g.pxmm, base: g.base, source: g.source || 'import', page: g.page ?? -1, alpha: base64ToBytes(g.a) }));
-  await addGlyphs(list);
-  return list.length;
 }
 
 /* ---------- cartas de referencia (archivero) ---------- */
@@ -115,18 +93,6 @@ export async function putRef(ref) { await tx('refs', 'readwrite', (s) => { s.put
 export async function deleteRef(id) { await tx('refs', 'readwrite', (s) => { s.delete(id); }); }
 export async function clearRefs() { await tx('refs', 'readwrite', (s) => { s.clear(); }); }
 
-export async function exportRefs() {
-  const data = { app: 'puno-y-letra', kind: 'refs', version: 1, exportedAt: new Date().toISOString(), refs: await allRefs() };
-  return new Blob([await gzip(new TextEncoder().encode(JSON.stringify(data)))], { type: 'application/octet-stream' });
-}
-// Devuelve cuántas cartas se sumaron (las que ya existen con el mismo id se reemplazan)
-export async function importRefs(file) {
-  const raw = new Uint8Array(await file.arrayBuffer());
-  const data = JSON.parse(new TextDecoder().decode(await gunzip(raw)));
-  if (data.app !== 'puno-y-letra' || data.kind !== 'refs' || !Array.isArray(data.refs)) throw new Error('El archivo no parece ser un archivero de Puño y Letra.');
-  await tx('refs', 'readwrite', (s) => { for (const r of data.refs) if (r && r.id && typeof r.text === 'string') s.put(r); });
-  return data.refs.length;
-}
 
 /* ---------- imágenes de fondo de las hojas ---------- */
 export async function putPaperImage(rec) { await tx('papers', 'readwrite', (s) => { s.put(rec); }); }

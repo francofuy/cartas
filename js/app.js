@@ -12,6 +12,7 @@ import { buildChips, buildSwatches } from './controls.js';
 import { setupPapers } from './papers.js';
 import { setupRefs } from './refs.js';
 import { setupCajon } from './cajon.js';
+import { exportBackup, importBackup, describe as describeBackup } from './backup.js';
 
 /* ------------------------------------------------------------------ */
 /* Ajustes y almacenamiento simple                                     */
@@ -442,6 +443,7 @@ function setView(v) {
   $('#view-hand').hidden = v !== 'hand';
   $('#btn-print').hidden = v !== 'write';
   if (v !== 'write') cajonApi?.close();
+  if (v === 'hand') updateBackupInfo();
   if (v === 'write') requestAnimationFrame(fit);
   closeDrawers();
   if (viewReady && changed) { // fundido corto, solo al cambiar de sección
@@ -797,19 +799,25 @@ function setupHand() {
   buildTemplateGrid();
   $('#file-cam').addEventListener('change', (e) => { handleFiles([...e.target.files]); e.target.value = ''; });
   $('#file-pick').addEventListener('change', (e) => { handleFiles([...e.target.files]); e.target.value = ''; });
-  $('#hand-export').addEventListener('click', async () => {
+  // copia de seguridad única (letra, archivero, imágenes y hojas, versiones, nota)
+  $('#backup-export').addEventListener('click', async () => {
     try {
-      const blob = await DB.exportHand();
+      const { blob, counts } = await exportBackup(LS);
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = 'mi-letra.pyl.gz'; a.click();
+      a.href = URL.createObjectURL(blob); a.download = `puno-y-letra-copia-${new Date().toISOString().slice(0, 10)}.pyl.gz`; a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    } catch (e) { console.error(e); toast('No pude exportar.'); }
+      toast(`Copia exportada: ${describeBackup({ ...counts, note: false }) || 'todavía no hay nada para guardar'}.`, 4200);
+    } catch (e) { console.error(e); toast('No pude exportar la copia.'); }
   });
-  $('#hand-import').addEventListener('change', async (e) => {
+  $('#backup-import').addEventListener('change', async (e) => {
     const f = e.target.files[0]; e.target.value = '';
     if (!f) return;
-    try { const n = await DB.importHand(f); await reloadGlyphs(); toast(`Importé ${n} variantes.`); }
-    catch (err) { console.error(err); toast(err.message || 'No pude importar ese archivo.'); }
+    try {
+      const c = await importBackup(f, LS);
+      await reloadGlyphs(); await refsApi?.reload(); papersApi?.refreshAll(); updateBackupInfo();
+      const d = describeBackup(c);
+      toast(d ? `Importé ${d}.` : 'No había nada nuevo para sumar: ya lo tenías todo.', 4200);
+    } catch (err) { console.error(err); toast(err.message || 'No pude importar ese archivo.'); }
   });
   $('#hand-clear').addEventListener('click', async () => {
     if (!(await ask('¿Borrar toda tu letra?', 'Se borran las letras guardadas en este dispositivo. Si no exportaste tu letra, para recuperarla vas a tener que fotografiar las plantillas de nuevo.', 'Borrar mi letra', true))) return;
@@ -828,6 +836,14 @@ function setupHand() {
 /* ------------------------------------------------------------------ */
 /* Arranque                                                            */
 /* ------------------------------------------------------------------ */
+/* resumen de lo que entra en la copia de seguridad */
+async function updateBackupInfo() {
+  const el = $('#backup-info'); if (!el) return;
+  const refs = refsApi ? refsApi.list().length : 0, vers = LS.get('pyl.versions', []).length, papers = LS.get('pyl.papers', []).length;
+  const d = describeBackup({ glyphs: lib.mineChars() ? (await DB.allGlyphs().catch(() => [])).length : 0, refs, papers: 0, savedPapers: papers, versions: vers, note: false });
+  el.textContent = d ? `Hoy tenés: ${d}.` : 'Todavía no hay nada para guardar en una copia.';
+}
+
 /* aviso fijo mientras se use la letra de ejemplo */
 function updateNotice() {
   const show = !lib.hasMine() && !LS.get('pyl.noticeHidden', false);
@@ -929,11 +945,24 @@ async function init() {
   $('#pg-prev').addEventListener('click', () => goPage(writer.page - 1));
   $('#pg-next').addEventListener('click', () => goPage(writer.page + 1));
   setupSheetOps();
-  $('#z-in').addEventListener('click', () => { zoom = clamp(zoom * 1.2, 0.6, 3.2); fit(); });
-  $('#z-out').addEventListener('click', () => { zoom = clamp(zoom / 1.2, 0.6, 3.2); fit(); });
-  const fitLabel = () => { $('#z-fit').textContent = fitMode === 'page' ? 'Ancho completo' : 'Hoja entera'; $('#z-fit').setAttribute('aria-label', fitMode === 'page' ? 'Ver la hoja a todo el ancho' : 'Ver la hoja entera'); };
-  fitLabel();
-  $('#z-fit').addEventListener('click', () => { fitMode = fitMode === 'page' ? 'width' : 'page'; LS.set('pyl.fit', fitMode); zoom = 1; fitLabel(); fit(); $('#scroller').scrollTo({ top: 0 }); });
+  // un solo botón de vista: ancho completo → hoja entera → de cerca (en celular, sin «hoja entera»)
+  const VIEWS = [{ fit: 'width', zoom: 1, label: 'Ancho' }, { fit: 'page', zoom: 1, label: 'Hoja entera' }, { fit: 'width', zoom: 1.5, label: 'De cerca' }];
+  let viewIdx = clamp(LS.get('pyl.viewIdx', 0), 0, VIEWS.length - 1);
+  if (isMobile() && VIEWS[viewIdx].fit === 'page') viewIdx = 0;
+  const applyView = (scroll) => {
+    const v = VIEWS[viewIdx];
+    fitMode = v.fit; zoom = v.zoom;
+    $('#btn-view .lab').textContent = v.label;
+    $('#btn-view').setAttribute('aria-label', `Cambiar la vista de la hoja. Ahora: ${v.label.toLowerCase()}`);
+    $('#btn-view').title = `Vista: ${v.label}. Tocá para cambiar.`;
+    fit();
+    if (scroll) $('#scroller').scrollTo({ top: 0 });
+  };
+  $('#btn-view').addEventListener('click', () => {
+    do { viewIdx = (viewIdx + 1) % VIEWS.length; } while (isMobile() && VIEWS[viewIdx].fit === 'page');
+    LS.set('pyl.viewIdx', viewIdx); applyView(true);
+  });
+  applyView(false);
   $$('.tab').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
   $$('.dock-btn[data-panel]').forEach((b) => b.addEventListener('click', () => togglePanel(b.dataset.panel)));
   document.addEventListener('keydown', (e) => {

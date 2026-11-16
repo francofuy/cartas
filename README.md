@@ -36,7 +36,8 @@ js/capture.js       foto -> homografía -> letras sueltas (solo tinta)
 js/template.js      geometría de la plantilla imprimible
 js/paper.js         dibujo del papel (líneas, margen, textura, imagen, decoraciones)
 js/papers.js        panel Papel: galería, editor y buscador; js/webpapers.js: fuentes de imágenes; js/controls.js: botones y paletas
-js/db.js            IndexedDB (letra y cartas) + exportar/importar
+js/db.js            IndexedDB (letra, cartas e imágenes de papel)
+js/backup.js        copia de seguridad única: exportar e importar todo
 js/print.js         impresión
 sw.js, manifest.webmanifest   instalable y offline
 dev/simulate.html   (desarrollo) simula la foto de una plantilla rellena, para probar la captura

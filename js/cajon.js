@@ -154,8 +154,6 @@ export function setupCajon(h, R) {
   /* ------------------------------------------------------------------ */
   $('#cab-add').addEventListener('click', () => R.openEditor());
   $('#cab-q').addEventListener('input', debounce((e) => { q = e.target.value; render(); }, 120));
-  $('#cab-export').addEventListener('click', () => R.exportAll());
-  $('#cab-import').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) R.importFile(f); });
   // clic fuera del cajón: la carta de frente vuelve a su lugar
   document.addEventListener('pointerdown', (e) => { if (featId && !box.contains(e.target) && !e.target.closest('#peek, #refdlg, #confirmdlg')) setFeat(null); });
 

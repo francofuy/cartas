@@ -309,19 +309,11 @@ export function setupRefs(h) {
   $('#ref-font').addEventListener('click', () => { h.S().refFont = h.S().refFont === 'hand' ? 'legible' : 'hand'; h.saveSettings(); h.syncControls(); const r = active(); if (r) renderView(r, true); });
   $('#note-text').addEventListener('input', debounce(refreshGhost, 250));
 
-  async function exportAll() {
-    if (!refs.length) { h.toast('Todavía no hay cartas para exportar.'); return; }
-    try { h.download(await DB.exportRefs(), 'archivero.pyl.gz'); h.toast('Archivero exportado.', 2200); } catch (e) { console.error(e); h.toast('No pude exportar el archivero.'); }
-  }
-  async function importFile(f) {
-    try { const n = await DB.importRefs(f); await load(); h.toast(`Se sumaron ${n} cartas.`, 3000); } catch (err) { h.toast(err.message || 'No pude importar ese archivo.'); }
-  }
-
   load();
   placeRef();
   return {
     list: () => refs, byId, activeId: () => activeId, onChange: (f) => subs.add(f),
-    useRef, dropRef, openEditor, peek, closePeek, setPos, exportAll, importFile,
+    useRef, dropRef, openEditor, peek, closePeek, setPos, reload: load,
     dragBegin, dragOver, dragEnd,
     peekOpen: () => !$('#peek').hidden,
     showNote, placeRef, refreshGhost,

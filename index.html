@@ -48,8 +48,6 @@
       <div class="cj-tools">
         <label class="cab-search"><span class="sr-only">Buscar en las cartas</span><span data-icon="search" class="ico" aria-hidden="true"></span><input type="search" id="cab-q" placeholder="Buscar…" autocomplete="off"></label>
         <button class="btn sm primary" id="cab-add">Sumar carta</button>
-        <button class="icon-btn sm" id="cab-export" aria-label="Exportar el archivero" title="Exportar el archivero" data-icon="download"></button>
-        <label class="icon-btn sm file" title="Importar un archivero"><span class="sr-only">Importar un archivero</span><span data-icon="upload" class="ico" aria-hidden="true"></span><input type="file" id="cab-import" accept=".gz,.json,application/gzip,application/octet-stream" hidden></label>
       </div>
       <p class="cj-hover muted" id="cj-hover" aria-hidden="true"></p>
       <div class="cj-tray" id="cabinet" role="group" aria-label="Cartas guardadas"></div>
@@ -230,8 +228,7 @@
 
       <div id="stage" class="stage">
         <div class="notice gp" id="demo-notice" hidden>
-          <p><b>Escribís con una letra de ejemplo.</b><span class="full"> Cargá la tuya para que las cartas salgan con tu puño.</span></p>
-          <button class="btn sm primary" id="notice-go">Cargar mi letra</button>
+          <p><b>Escribís con una letra de ejemplo.</b> Cargá la tuya en <button type="button" class="inline-link" id="notice-go">Mi letra</button> para que las cartas salgan con tu puño.</p>
           <button class="icon-btn sm" id="notice-close" aria-label="Ocultar aviso" data-icon="close"></button>
         </div>
         <div id="scroller" class="scroller">
@@ -252,10 +249,8 @@
             <button class="bbtn" id="btn-flip" type="button" aria-label="Dar vuelta la hoja"><span class="ico" data-icon="flip"></span><span class="lab">Dar vuelta</span></button>
             <button class="bbtn" id="btn-sheet" type="button" aria-label="Tomar otra hoja del montón"><span class="ico" data-icon="sheetPlus"></span><span class="lab">Hoja nueva</span></button>
           </div>
-          <div class="zoom" role="group" aria-label="Zoom">
-            <button class="icon-btn sm" id="z-out" aria-label="Alejar" data-icon="minus"></button>
-            <button class="icon-btn sm wide" id="z-fit" aria-label="Ver la hoja entera">Hoja entera</button>
-            <button class="icon-btn sm" id="z-in" aria-label="Acercar" data-icon="plus"></button>
+          <div class="zoom" role="group" aria-label="Vista de la hoja">
+            <button class="bbtn" id="btn-view" type="button" aria-label="Cambiar la vista de la hoja. Ahora: ancho"><span class="ico" data-icon="zoom"></span><span class="lab">Ancho</span></button>
           </div>
           <button class="hold" id="btn-new" type="button" title="Mantené apretado para empezar de cero" aria-label="Empezar de cero: mantené apretado para dejar la hoja en blanco">
             <i aria-hidden="true"></i><span class="hl">Mantené: empezar de cero</span><span class="hs" aria-hidden="true">De cero</span>
@@ -318,10 +313,19 @@
           <p class="muted" id="cov-summary"></p>
           <div id="coverage"></div>
           <div class="row wrap">
-            <button class="btn" id="hand-export">Exportar mi letra</button>
-            <label class="btn file">Importar mi letra<input type="file" id="hand-import" accept=".gz,.json,application/gzip,application/octet-stream" hidden></label>
             <button class="btn danger" id="hand-clear">Borrar mi letra</button>
           </div>
+        </section>
+
+        <section class="card gp" aria-labelledby="h-backup">
+          <div class="card-head"><span class="num" aria-hidden="true">4</span><h2 id="h-backup">Copia de seguridad</h2></div>
+          <p class="muted">Un solo archivo con todo lo tuyo: tu letra, las cartas del archivero, las imágenes y hojas guardadas, las versiones y la nota. Sirve para pasar todo a otro dispositivo o para tener un respaldo. No incluye los ajustes de este dispositivo ni las claves de los buscadores.</p>
+          <p class="hint" id="backup-info"></p>
+          <div class="row wrap">
+            <button class="btn primary" id="backup-export">Exportar todo</button>
+            <label class="btn file">Importar copia<input type="file" id="backup-import" accept=".gz,.json,application/gzip,application/octet-stream" hidden></label>
+          </div>
+          <p class="hint">Al importar se suma a lo que ya tenés: no se pisa nada ni se duplica lo que ya está.</p>
         </section>
       </div>
     </section>
@@ -361,7 +365,8 @@
 <!-- versiones -->
 <dialog id="versions" class="gp" aria-labelledby="versions-title">
   <form method="dialog" class="dlg">
-    <h3 id="versions-title">Versiones guardadas</h3>
+    <h3 id="versions-title">Versiones de tu carta</h3>
+    <p class="muted">Copias de la carta que estás escribiendo, por si querés volver atrás. Para tener una carta como modelo para copiar, sumala al archivero.</p>
     <div class="row"><input type="text" id="ver-name" placeholder="Nombre (opcional)" aria-label="Nombre de la versión"><button class="btn primary" id="ver-save" type="button">Guardar versión</button></div>
     <ul class="ver-list" id="ver-list"></ul>
     <div class="row end"><button class="btn" value="close">Cerrar</button></div>

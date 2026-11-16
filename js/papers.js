@@ -335,6 +335,7 @@ export function setupPapers(h) {
     isWide,
     sync() { $('#paper-chips')._refresh?.(); refreshDeco(); if (lastImg !== S().paper.imageId) renderImageBox(); },
     onOpen() { setTab(tab); },
+    refreshAll() { renderGallery(); renderImageBox(); },
     ensureImage,
   };
 }
