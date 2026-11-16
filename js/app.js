@@ -922,7 +922,7 @@ async function init() {
     $('#btn-view .lab').textContent = v.label;
     $('#btn-view').setAttribute('aria-label', `Cambiar la vista de la hoja. Ahora: ${v.label.toLowerCase()}`);
     $('#btn-view').title = `Vista: ${v.label}. Tocá para cambiar.`;
-    fit();
+    fit(); focusApi?.setView(viewIdx); // en el modo foco la vista cambia la distancia de la cámara
     if (scroll) $('#scroller').scrollTo({ top: 0 });
   };
   $('#btn-view').addEventListener('click', () => {

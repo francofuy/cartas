@@ -46,3 +46,6 @@ Idea: cámara fija con la lapicera siempre en el mismo punto de la pantalla; la 
 
 ### Valores finales de la luz (los que pegaste desde el editor, ya aplicados en la app)
 V de 70°, vértice (1, −41), borde 67, punta 50, alcance 262, núcleo 30/45, intensidad 80 %, 2850 K, color 89 %, luz a 220 mm, caída 10, halo 49 %, rebote 22 %, fondo 82 %, resplandor 10 %, bordes 49 %, grano 7 %. Escena: rodillo 38, rigidez 55, enrollado 210°, cámara −10° y 61 %, giro 14 %. Están en LOOK dentro de js/focus3d.js.
+
+### Modo foco 3D: transición y interfaz (hecho)
+El fondo normal (con puntos) se oscurece en vez de pasar a negro; la interfaz queda muy tenue (20 %) y vuelve al pasar el mouse o con el teclado; los botones de vista (Ancho / Hoja entera / De cerca) mueven la cámara; al usar un botón el cursor vuelve a la hoja. La hoja 3D arranca exactamente donde está la hoja normal y viaja hasta su lugar (cámara, curva y luz); al salir hace el camino inverso.

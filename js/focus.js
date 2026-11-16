@@ -29,38 +29,53 @@ export function setupFocus({ writer, toast, animOn, refit }) {
     exit.hidden = false; exit.classList.add('show'); clearTimeout(hideT);
     hideT = setTimeout(() => exit.classList.remove('show'), 2400);
   }
+  let moving = false, vf = 1;
+  const rectOf = (el) => { const r = el.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height }; };
+  const sheetRect = () => rectOf($('#sheet')), scrollRect = () => rectOf($('#scroller'));
   async function enter() {
-    if (on) return;
-    on = true; init = false; use3d = false; document.body.classList.add('focus');
+    if (on || moving) return;
+    on = true; moving = true; init = false; use3d = false; document.body.classList.add('focus');
     btn?.setAttribute('aria-pressed', 'true');
     $('#cap')?.focus({ preventScroll: true });
     if (webglOk()) { // la hoja en 3D, como en una máquina de escribir; si algo falla, queda la luz simple
       try {
-        texBoost = true; refit?.(); const w = writer(); if (w) w.noCaret = true;
-        f3 = f3 || createFocus3D({ writer, animOn });
-        await f3.start(); use3d = true;
-      } catch (e) { console.warn('Modo foco 3D no disponible, uso la luz simple.', e); texBoost = false; const w = writer(); if (w) w.noCaret = false; refit?.(); }
+        const rect = sheetRect(), clip = scrollRect(); // dónde está la hoja normal, antes de cambiarle el tamaño
+        const w = writer(); if (w) w.noCaret = true;
+        f3 = f3 || createFocus3D({ writer, animOn, viewFactor: () => vf });
+        await f3.start({ rect, clip, dur: 1.35 }); use3d = true;
+        // la hoja 3D ya está encima y es igual a la normal: se esconde la normal y se pasa a la textura grande
+        setTimeout(() => { if (!on || !use3d) return; document.body.classList.add('f3-hide'); texBoost = true; refit?.(); }, 300);
+      } catch (e) { console.warn('Modo foco 3D no disponible, uso la luz simple.', e); const w = writer(); if (w) w.noCaret = false; }
     }
-    if (!on) { if (use3d) { f3.stop(); texBoost = false; refit?.(); } return; } // se salió mientras cargaba
+    if (!on) { moving = false; return; }
     if (!use3d) { fx.classList.add('on'); loop(); }
     $('#cap')?.focus({ preventScroll: true });
     toast(matchMedia('(pointer: coarse)').matches ? 'Modo foco. Tocá la pantalla para ver el botón de salir.' : 'Modo foco. Para salir: Esc o Ctrl + .', 3200);
-    showExit();
+    showExit(); moving = false;
   }
-  function leave() {
-    if (!on) return;
-    on = false; document.body.classList.remove('focus'); fx.classList.remove('on');
+  async function leave() {
+    if (!on || moving) return;
+    on = false; moving = true; document.body.classList.remove('focus'); fx.classList.remove('on');
     btn?.setAttribute('aria-pressed', 'false');
     exit.classList.remove('show'); exit.hidden = true; clearTimeout(hideT);
     cancelAnimationFrame(raf); raf = 0;
-    if (use3d) { f3.stop(); use3d = false; texBoost = false; const w = writer(); if (w) w.noCaret = false; refit?.(); }
+    if (use3d) {
+      use3d = false;
+      // se mide dónde va a quedar la hoja normal (con su tamaño de siempre) y la 3D viaja hasta ahí
+      texBoost = false; refit?.(); const rect = sheetRect(), clip = scrollRect(); texBoost = true; refit?.();
+      await f3.stop({ rect, clip, dur: 1.0 });
+      texBoost = false; refit?.(); document.body.classList.remove('f3-hide'); const w = writer(); if (w) w.noCaret = false;
+    }
     $('#cap')?.focus({ preventScroll: true });
+    moving = false;
   }
   const toggle = () => (on ? leave() : enter());
+  // al usar los botones (vista, hojas, referencias) el cursor vuelve a la hoja para seguir escribiendo
+  document.addEventListener('click', (e) => { if (!on || document.querySelector('dialog[open]')) return; const t = e.target; if (t.closest && t.closest('.stage-bar, .dock, .top, .cajon') && !t.closest('input, textarea, select, #sealed-pop')) setTimeout(() => $('#cap')?.focus({ preventScroll: true }), 0); });
   btn?.addEventListener('click', toggle);
   $('#btn-focus-pop')?.addEventListener('click', () => { document.querySelector('.dock-btn.on[data-panel]')?.click(); setTimeout(enter, 60); });
   exit.addEventListener('click', leave);
   document.addEventListener('pointermove', showExit, { passive: true });
   document.addEventListener('pointerdown', showExit, { passive: true });
-  return { toggle, leave, isOn: () => on, wantsTexture: () => texBoost, textureCssW: () => Math.round(TEX_W_PX / Math.min(window.devicePixelRatio || 1, 3)) };
+  return { toggle, leave, isOn: () => on, setView(i) { vf = [1, 1.5, 0.72][i] ?? 1; f3?.setView(vf); }, wantsTexture: () => texBoost, textureCssW: () => Math.round(TEX_W_PX / Math.min(window.devicePixelRatio || 1, 3)) };
 }

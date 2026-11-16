@@ -58,10 +58,12 @@
 
 <!-- modo foco: todo se apaga y una luz acompaña lo que escribís -->
 <div id="focus-fx" aria-hidden="true"><div class="fx-dark"></div><div class="fx-warm"></div></div>
-<div id="focus3d" hidden aria-hidden="true"><canvas></canvas><div class="f3-glow"></div><div class="f3-vig"></div></div>
 <button id="focus-exit" class="btn sm" type="button" hidden>Salir del foco · Esc</button>
 
 <div id="app">
+
+  <!-- modo foco 3D: entre el fondo y la interfaz; el fondo normal se oscurece y la hoja se muestra en 3D -->
+  <div id="focus3d" hidden aria-hidden="true"><div class="f3-dim"></div><canvas></canvas><div class="f3-glow"></div><div class="f3-vig"></div></div>
 
   <header class="top">
     <div class="top-l">
