@@ -58,3 +58,6 @@ Pieza de luz más chica (26×11×10 mm) y oscura (metal al 75 % de oscuridad, de
 
 ### Barra de luz en la app (hecho)
 Barra de metal negro con la "aleta" y la luz en V (valores del editor: tip 22, barra 236×5 mm, aleta 18×10×9, oscuridad 75, ranura 100, resplandor 8). Está en LOOK de js/focus3d.js. Al saltar de renglón la barra se corre rápido y la tinta espera 0,5 s antes de empezar (LINE_DELAY en js/focus3d.js).
+
+## Cuadernos con espiral y hojas A5 (prototipo mostrado, sin elegir)
+Idea: poder escribir en A5 además de A4, y que lo que se escribe viva en un cuaderno con espiral. Un botón cierra el cuaderno y la pantalla pasa a una «mesa» con los cuadernos cerrados en su tamaño real (A4 y A5); al elegir uno se acerca, se abre (tapa y hojas ya usadas pasan solas) y queda en la primera hoja libre. «Pasar hoja» da vuelta la hoja como en un cuaderno. Crear cuaderno: nombre, tamaño y color de tapa. Prototipo con CSS 3D; en la app habría que adaptar la hoja del escritor a A5 (medidas de página, márgenes, impresión) y guardar los cuadernos (hojas escritas y hoja actual).
