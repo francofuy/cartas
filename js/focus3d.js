@@ -11,7 +11,7 @@ import { PAGE_W as W, PAGE_H as H } from './template.js';
 export const LOOK = {
   luz: { ax: 1, ay: -41, tilt: 0, open: 70, asym: 0, edge: 67, bow: 0, tip: 50, reach: 262, fade: 50, core: 30, coreSize: 45, inten: 80, temp: 2850, sat: 89, dist: 220, falloff: 10,
     halo: 49, haloOpen: 110, haloSoft: 80, amb: 22, ambTemp: 3300, dk: 82, glow: 10, vig: 49, grain: 7, flicker: 0, flickerSpeed: 3 },
-  escena: { rad: 38, rig: 55, wrap: 210, elev: -10, zoom: 61, yaw: 14 },
+  escena: { rad: 38, rig: 55, wrap: 210, elev: -10, zoom: 61, yaw: 14, camY: -8 }, // camY: a qué altura mira la cámara respecto de la punta (mm); más bajo = se ve más hoja por debajo
 };
 export const TEX_W_PX = 1400; // ancho de la textura de la hoja (píxeles): suficiente para leer la letra sin gastar de más
 
@@ -50,7 +50,7 @@ float lightMask( int i ) {
 export function createFocus3D(h) {
   let T = null, ready = false, running = false, raf = 0, texDirty = true;
   let renderer, scene, camera, group, geo, base, tex, spot, halo, amb, flat, host, glowEl, vigEl, dimEl, canvasEl;
-  let u = 0, uTarget = 0, uDur = 1.3, onArrive = null, pose0 = { d: 300, tx: 0, ty: 45 }, zoomNow = LOOK.escena.zoom / 100, zoomTarget = zoomNow;
+  let u = 0, uTarget = 0, uDur = 1.3, onArrive = null, pose0 = { d: 300, tx: 0, ty: LOOK.escena.camY }, zoomNow = LOOK.escena.zoom / 100, zoomTarget = zoomNow;
   const U = {}; const rows = []; const NX = 25; let NY = 480;
   const S0 = 16; // tramo plano de la hoja sobre la línea que se escribe
   const P = { rad: LOOK.escena.rad, rig: LOOK.escena.rig, wrap: LOOK.escena.wrap, elev: LOOK.escena.elev, zoom: LOOK.escena.zoom / 100, yaw: LOOK.escena.yaw / 100 };
@@ -178,7 +178,7 @@ export function createFocus3D(h) {
     const yaw = -(lx / (W / 2)) * 0.16 * P.yaw * e, roll = T.MathUtils.clamp((pen.x - prevX) * -0.0009 * 5.1, -0.05, 0.05) * P.yaw * 6 * e; prevX = pen.x;
     group.rotation.set(0, yaw, roll);
     group.position.set(lx, ly, 0).applyEuler(group.rotation).negate().multiplyScalar(e); // la punta queda siempre en el origen
-    const dEnd = endDist(), d = Math.exp(lerp(Math.log(pose0.d), Math.log(dEnd), e)), el = lerp(0, T.MathUtils.degToRad(P.elev), e), tx = lerp(pose0.tx, 0, e), ty = lerp(pose0.ty, 45, e);
+    const dEnd = endDist(), d = Math.exp(lerp(Math.log(pose0.d), Math.log(dEnd), e)), el = lerp(0, T.MathUtils.degToRad(P.elev), e), tx = lerp(pose0.tx, 0, e), ty = lerp(pose0.ty, LOOK.escena.camY, e);
     camera.position.set(tx, ty + d * Math.sin(el), d * Math.cos(el)); camera.lookAt(tx, ty, 0); camera.updateMatrixWorld();
     applyLight(now / 1000, e);
     renderer.render(scene, camera);
