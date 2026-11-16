@@ -162,11 +162,20 @@ export function createFocus3D(h) {
   const lerp = (a, b, t) => a + (b - a) * t;
 
   /* ---------- cuadro a cuadro ---------- */
-  const pen = { x: 0, y: 0 }; let first = true, prevX = 0, last = 0;
+  const pen = { x: 0, y: 0 }; let first = true, prevX = 0, last = 0, lastTy = 0, ret = null;
   function frame(now) {
     raf = 0; if (!running) return;
     const w = h.writer(), c = w._pen, reduce = !h.animOn(), dt = Math.min(0.05, (now - last) / 1000);
-    if (c && c.page === w.page) { if (first) { pen.x = c.x; pen.y = c.y; first = false; prevX = pen.x; } else { const k = reduce ? 1 : 1 - Math.pow(0.0009, dt); pen.x += (c.x - pen.x) * k; pen.y += (c.y - pen.y) * k; } }
+    if (c && c.page === w.page) {
+      if (first) { pen.x = c.x; pen.y = c.y; lastTy = c.y; first = false; prevX = pen.x; }
+      else {
+        // al saltar de renglón la hoja se corre de golpe, como el carro de una máquina de escribir: rápido y con un pequeño rebote al frenar
+        if (Math.abs(c.y - lastTy) > 2.5) ret = reduce ? null : { t: 0, x0: pen.x, y0: pen.y };
+        lastTy = c.y;
+        if (ret) { ret.t += dt / 0.13; const uu = Math.min(1, ret.t), v = uu - 1, k2 = 1 + 2.4 * v * v * v + 1.4 * v * v; pen.x = ret.x0 + (c.x - ret.x0) * k2; pen.y = ret.y0 + (c.y - ret.y0) * k2; if (uu >= 1) ret = null; }
+        else { const k = reduce ? 1 : 1 - Math.pow(0.0009, dt); pen.x += (c.x - pen.x) * k; pen.y += (c.y - pen.y) * k; }
+      }
+    }
     last = now;
     // avance de la transición de entrada/salida
     if (u !== uTarget) { u = reduce ? uTarget : (uTarget > u ? Math.min(uTarget, u + dt / uDur) : Math.max(uTarget, u - dt / uDur)); if (u === uTarget && onArrive) { const f = onArrive; onArrive = null; f(); } }
@@ -190,7 +199,7 @@ export function createFocus3D(h) {
     // arranca desde la hoja normal (rect = su rectángulo en pantalla; clip = la zona visible de la hoja)
     async start({ rect, clip, dur } = {}) {
       if (!ready) await init();
-      running = true; first = true; texDirty = true; last = performance.now(); u = 0; uTarget = 1; uDur = dur || 1.3; onArrive = null;
+      running = true; first = true; ret = null; texDirty = true; last = performance.now(); u = 0; uTarget = 1; uDur = dur || 1.3; onArrive = null;
       zoomNow = zoomTarget = LOOK.escena.zoom / 100 * (h.viewFactor?.() || 1);
       host.hidden = false; resize(); setPose0(rect || { left: innerWidth * 0.2, top: 0, width: innerWidth * 0.6, height: innerWidth * 0.6 * H / W });
       if (clip) { canvasEl.style.transition = 'none'; canvasEl.style.clipPath = clipOf(clip); void canvasEl.offsetWidth; canvasEl.style.transition = `clip-path ${uDur}s cubic-bezier(.45,0,.2,1)`; }

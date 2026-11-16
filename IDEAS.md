@@ -52,3 +52,6 @@ El fondo normal (con puntos) se oscurece en vez de pasar a negro; la interfaz qu
 
 ### Barra de luz (prototipo mostrado, aún no está en la app)
 Para que la luz tenga de dónde salir: una barra de metal delgada cruza la hoja de punta a punta, sobre dos soportes, y en el centro tiene una parte semicuadrada con un chaflán y una ranura por donde sale la V. La barra se desplaza con la hoja hacia los costados (queda fija en altura); la parte de la luz queda siempre en la lapicera, como un carro. Acabados: acero cepillado, latón o negro anodizado. La punta de la V se acorta (22 mm) porque ahora hay una fuente visible.
+
+### Barra de luz, segunda ronda
+Pieza de luz más chica (26×11×10 mm) y oscura (metal al 75 % de oscuridad, detrás de la luz); seis formas para elegir en el prototipo: cuadrado pequeño, bloque con chaflán, pastilla, cuña, anillo y aleta. El salto de renglón ya es más seco y rápido en la app (0,13 s con un pequeño rebote, estilo carro de máquina de escribir). La barra todavía no está en la app.
