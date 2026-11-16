@@ -31,3 +31,4 @@ Luz y tinta húmeda, portalápices; tachones, formato a mano y firma; fotos y ci
 
 ## Luz del modo foco
 Hoy: elipse suave bajo la punta. Se pidió una luz «en V». Opciones mostradas: elipse, V que abre hacia arriba, cono de lámpara desde arriba, Λ desde la punta, haz diagonal, V con ambiente. Falta elegir y ajustar ángulo, alcance y tono.
+Segunda ronda (pedido: V más abierta, origen más abajo, punta sin filo, como linterna o foco cálido): seis linternas (base, foco amplio, con núcleo, inclinada, abanico corto, con penumbra) en una página con controles de apertura, origen, suavidad de la punta, oscuridad y tono.
