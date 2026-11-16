@@ -145,7 +145,9 @@ export class Writer {
     }
     if (delLen > 0 && ins.length === 0) this.onErase?.(delLen);
     this.text = this.text.slice(0, start) + ins + this.text.slice(start + delLen);
-    this.times = this.times.slice(0, start).concat(this.scheduleChars(ins, t), this.times.slice(start + delLen));
+    this.times = this.times.slice(0, start).concat(this.times.slice(start + delLen));
+    this.recomputeNext(t);
+    this.times = this.times.slice(0, start).concat(this.scheduleChars(ins, t), this.times.slice(start));
     this.caret = clamp(caretAfter, 0, this.text.length);
     this.relayout();
     const c = this.layout.caret[this.caret];
@@ -156,7 +158,9 @@ export class Writer {
     this.schedule();
   }
 
-  // ritmo humano: cada letra tarda en escribirse y entre letras hay pequeñas pausas
+  // Ritmo humano y parejo: escribas rápido o lento, la mano tarda lo mismo en cada letra.
+  // Lo que tipeás se acumula y la tinta lo va escribiendo a su paso; solo si se juntan muchísimos
+  // segundos de espera (por ejemplo al pegar una página) acelera de a poco para no tardar una eternidad.
   scheduleChars(str, t) {
     const S = this.S;
     const out = [];
@@ -165,11 +169,16 @@ export class Writer {
     let tcur = Math.max(t, this.nextT);
     for (const c of str) {
       const backlog = tcur - t;
-      const hurry = (1 + Math.max(0, backlog - 0.4) * 3.4) * spd;
+      const catchUp = 1 + Math.min(2.2, Math.max(0, backlog - 25) * 0.05);
+      // la velocidad de la mano varía despacio (se apura y se afloja), nunca de golpe
+      this.paceN = (this.paceN || 0) + 1;
+      const drift = 1 + 0.09 * Math.sin(this.paceN * 0.19) + 0.05 * Math.sin(this.paceN * 0.47 + 1.3);
+      const hurry = (catchUp * spd * drift) / 1.9; // 1.9: ritmo de mano real (unas 6 letras por segundo con la velocidad en ×1,0)
       const r = Math.random();
       if (c === ' ' || c === '\n' || c === '\t' || c === '\f' || c === '\v') {
         out.push({ t0: tcur, dur: 0, drawn: true, ws: true });
-        tcur += (c === '\f' || c === '\v' ? 0.35 : c === '\n' ? 0.2 : 0.045 + 0.07 * r) / hurry;
+        // entre palabras la mano se despega un instante; al cambiar de renglón o de hoja, un poco más
+        tcur += (c === '\f' || c === '\v' ? 0.5 : c === '\n' ? 0.38 : 0.07 + 0.09 * r) / hurry;
         continue;
       }
       const vs = this.lib.variants(normalizeChar(c));
@@ -178,10 +187,18 @@ export class Writer {
       const dur = clamp((0.07 + len / 210) * (0.85 + 0.35 * r), 0.085, 0.45) / hurry;
       out.push({ t0: tcur, dur, drawn: false });
       tcur += dur * 0.55 + (0.03 + 0.05 * Math.random()) / hurry;
-      if (/[.,;:!?¿¡]/.test(c)) tcur += 0.06 / hurry;
+      if (/[.!?]/.test(c)) tcur += 0.22 / hurry;
+      else if (/[,;:]/.test(c)) tcur += 0.11 / hurry;
     }
     this.nextT = tcur;
     return out;
+  }
+
+  // después de borrar texto que todavía no se había escrito, la fila de espera se acorta
+  recomputeNext(t) {
+    let last = t;
+    for (const tm of this.times) if (tm) last = Math.max(last, tm.t0 + tm.dur * 0.55 + 0.04);
+    this.nextT = last;
   }
 
   // instante en que todo lo escrito termina de dibujarse
