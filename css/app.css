@@ -423,3 +423,6 @@ input[type="text"] { flex: 1; min-width: 0; }
 @media (max-width: 1180px) {
   body.dk .dock { background: rgb(14 14 20 / .64); }
 }
+
+/* La barra de la hoja, igual que el dock: vidrio translúcido con un velo oscuro (se ven los puntos, y las letras se leen sobre la hoja clara). */
+body.dk .stage-bar { background: rgb(14 14 20 / .64); backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat)); -webkit-backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat)); }
