@@ -1,9 +1,9 @@
 // Service worker: deja la app disponible sin conexión.
-const CACHE = 'puno-y-letra-v6';
+const CACHE = 'puno-y-letra-v7';
 const ASSETS = [
-  './', 'index.html', 'manifest.webmanifest', 'css/app.css', 'css/archivero.css',
-  'js/app.js', 'js/capture.js', 'js/chars.js', 'js/db.js', 'js/glyphs.js', 'js/icons.js', 'js/layout.js', 'js/cajon.js', 'js/paper.js',
-  'js/print.js', 'js/refs.js', 'js/skeleton.js', 'js/template.js', 'js/theme.js', 'js/util.js', 'js/writer.js',
+  './', 'index.html', 'manifest.webmanifest', 'css/app.css', 'css/archivero.css', 'css/papeles.css',
+  'js/app.js', 'js/capture.js', 'js/chars.js', 'js/controls.js', 'js/db.js', 'js/glyphs.js', 'js/icons.js', 'js/layout.js', 'js/cajon.js', 'js/paper.js', 'js/papers.js',
+  'js/print.js', 'js/refs.js', 'js/skeleton.js', 'js/template.js', 'js/theme.js', 'js/util.js', 'js/webpapers.js', 'js/writer.js',
   'fonts/caveat-500.woff2', 'fonts/inter-latin-400-normal.woff2', 'fonts/inter-latin-500-normal.woff2', 'fonts/inter-latin-600-normal.woff2',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
 ];

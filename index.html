@@ -12,6 +12,7 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/archivero.css">
+<link rel="stylesheet" href="css/papeles.css">
 </head>
 <body data-view="write">
 <a class="skip" href="#cap" id="skip-sheet">Saltar a la hoja</a>
@@ -124,19 +125,97 @@
 
         <section class="sec" data-sec="paper">
           <h2>Papel</h2>
-          <div class="chips" id="paper-chips" role="group" aria-label="Tipo de hoja"></div>
-          <div class="field"><span class="lbl" id="lbl-paper">Color del papel</span>
-            <div class="swatches" id="paper-swatches" role="group" aria-labelledby="lbl-paper"></div>
+          <div class="ptabs" role="tablist" aria-label="Papel">
+            <button type="button" role="tab" id="ptab-gallery" data-ptab="gallery" aria-selected="true" aria-controls="pp-gallery">Galería</button>
+            <button type="button" role="tab" id="ptab-edit" data-ptab="edit" aria-selected="false" aria-controls="pp-edit">Editar</button>
+            <button type="button" role="tab" id="ptab-search" data-ptab="search" aria-selected="false" aria-controls="pp-search">Buscar</button>
           </div>
-          <div class="field"><span class="lbl" id="lbl-line">Color de las líneas</span>
-            <div class="swatches" id="line-swatches" role="group" aria-labelledby="lbl-line"></div>
+
+          <div class="ptab" id="pp-gallery" role="tabpanel" aria-labelledby="ptab-gallery" data-ptab="gallery">
+            <h3 class="sub first">Modelos</h3>
+            <div class="pgrid" id="pg-models"></div>
+            <h3 class="sub">Mis hojas</h3>
+            <div class="pgrid" id="pg-mine"></div>
+            <p class="hint" id="pg-empty">Todavía no guardaste ninguna. Armá una hoja en «Editar» y guardala acá.</p>
+            <form class="savebar" id="pg-saveform">
+              <input type="text" id="pg-name" maxlength="40" placeholder="Nombre de esta hoja" aria-label="Nombre de la hoja a guardar">
+              <button class="btn sm" type="submit">Guardar esta hoja</button>
+            </form>
           </div>
-          <label class="field range"><span class="lbl">Separación de renglones</span><input type="range" data-s="paper.lineSpacing" min="6" max="14" step="0.5"></label>
-          <label class="field toggle"><span class="lbl">Margen rojo</span><input type="checkbox" data-s="paper.margin"></label>
-          <div class="field"><span class="lbl" id="lbl-over">Cuando se llena la hoja, la carta sigue…</span>
-            <div class="chips" id="overflow-chips" role="group" aria-labelledby="lbl-over"></div>
+
+          <div class="ptab" id="pp-edit" role="tabpanel" aria-labelledby="ptab-edit" data-ptab="edit" hidden>
+            <h3 class="sub first">Tipo de hoja</h3>
+            <div class="chips" id="paper-chips" role="group" aria-label="Tipo de hoja"></div>
+            <div class="field"><span class="lbl" id="lbl-paper">Color del papel</span>
+              <div class="swatches" id="paper-swatches" role="group" aria-labelledby="lbl-paper"></div>
+            </div>
+            <label class="field range"><span class="lbl">Textura</span><input type="range" data-s="paper.grain" min="0" max="1" step="0.05"></label>
+
+            <h3 class="sub">Líneas</h3>
+            <div class="field"><span class="lbl" id="lbl-line">Color</span>
+              <div class="swatches" id="line-swatches" role="group" aria-labelledby="lbl-line"></div>
+            </div>
+            <label class="field range"><span class="lbl">Separación de renglones</span><input type="range" data-s="paper.lineSpacing" min="6" max="14" step="0.5"></label>
+            <label class="field range"><span class="lbl">Grosor</span><input type="range" data-s="paper.lineWidth" min="0.08" max="0.5" step="0.01"></label>
+            <label class="field range"><span class="lbl">Intensidad</span><input type="range" data-s="paper.lineOpacity" min="0.1" max="1" step="0.02"></label>
+
+            <h3 class="sub">Margen</h3>
+            <label class="field toggle"><span class="lbl">Mostrar margen</span><input type="checkbox" data-s="paper.margin"></label>
+            <label class="field range"><span class="lbl">Posición</span><input type="range" data-s="paper.marginX" min="16" max="50" step="1"></label>
+            <div class="field"><span class="lbl" id="lbl-mcol">Color del margen</span>
+              <div class="swatches" id="margin-swatches" role="group" aria-labelledby="lbl-mcol"></div>
+            </div>
+
+            <h3 class="sub">Imagen de fondo</h3>
+            <div class="imgrow">
+              <div class="imgthumb" id="img-thumb" aria-live="polite"><span class="muted">Sin imagen</span></div>
+              <div class="imgbtns">
+                <label class="btn sm file">Subir imagen<input type="file" id="img-file" accept="image/*" hidden></label>
+                <button type="button" class="btn sm" id="img-rot">Girar</button>
+                <button type="button" class="btn sm" id="img-del">Quitar</button>
+              </div>
+            </div>
+            <p class="hint" id="img-credit"></p>
+            <label class="field range"><span class="lbl">Intensidad de la imagen</span><input type="range" data-s="paper.imageOpacity" min="0.1" max="1" step="0.02"></label>
+            <div class="field" id="img-recent-box" hidden><span class="lbl">Imágenes que ya usaste</span><div class="recent" id="img-recent"></div></div>
+
+            <h3 class="sub">Decoraciones</h3>
+            <div class="chips" id="deco-chips" role="group" aria-label="Decoraciones"></div>
+            <div class="field"><span class="lbl" id="lbl-dcol">Color de las decoraciones</span>
+              <div class="swatches" id="deco-swatches" role="group" aria-labelledby="lbl-dcol"></div>
+            </div>
+
+            <h3 class="sub">Hojas con dorso</h3>
+            <div class="field"><span class="lbl" id="lbl-over">Cuando se llena la hoja, la carta sigue…</span>
+              <div class="chips" id="overflow-chips" role="group" aria-labelledby="lbl-over"></div>
+            </div>
           </div>
-          <label class="field range"><span class="lbl">Textura</span><input type="range" data-s="paper.grain" min="0" max="1" step="0.05"></label>
+
+          <div class="ptab" id="pp-search" role="tabpanel" aria-labelledby="ptab-search" data-ptab="search" hidden>
+            <form class="sbar" id="ws-form">
+              <input type="search" id="ws-q" placeholder="Ej.: papel antiguo, acuarela, flores…" aria-label="Qué hoja buscar" autocomplete="off">
+              <button class="btn sm primary" type="submit">Buscar</button>
+            </form>
+            <div class="chips" id="ws-sugg" role="group" aria-label="Ideas para buscar"></div>
+            <div class="field"><span class="lbl" id="lbl-prov">Dónde buscar</span>
+              <div class="chips" id="ws-prov" role="group" aria-labelledby="lbl-prov"></div>
+            </div>
+            <p class="hint" id="ws-note"></p>
+            <form class="keybox" id="ws-keybox" hidden>
+              <label class="fld"><span id="ws-keylbl">Clave</span><input type="password" id="ws-key" autocomplete="off" spellcheck="false" placeholder="Pegá tu clave acá"></label>
+              <div class="row wrap"><button class="btn sm" type="submit">Guardar clave</button><a id="ws-keylink" class="link-btn" target="_blank" rel="noopener noreferrer">Conseguir una clave gratis</a></div>
+              <p class="hint">La clave se guarda solo en este dispositivo y se usa únicamente para pedir imágenes a ese servicio.</p>
+            </form>
+            <p class="hint" id="ws-status" role="status" aria-live="polite"></p>
+            <div class="rgrid" id="ws-results"></div>
+            <div class="row"><button type="button" class="btn sm" id="ws-more" hidden>Más resultados</button></div>
+            <div class="wspick" id="ws-pick" hidden role="dialog" aria-label="Imagen elegida">
+              <img id="ws-pick-img" alt="">
+              <b id="ws-pick-title"></b>
+              <p class="hint" id="ws-pick-credit"></p>
+              <div class="row wrap"><button type="button" class="btn primary" id="ws-pick-use">Usar como hoja</button><button type="button" class="btn" id="ws-pick-back">Volver</button><a id="ws-pick-link" class="link-btn" target="_blank" rel="noopener noreferrer">Ver en el sitio</a></div>
+            </div>
+          </div>
         </section>
 
         <section class="sec" data-sec="hand">

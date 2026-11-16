@@ -8,6 +8,8 @@ import { loadPhoto, detectMarkers, defaultCorners, warpPage, detectPageCode, ext
 import { printLetter, printTemplates } from './print.js';
 import { icon, hydrateIcons } from './icons.js';
 import { DEFAULT_THEME, applyTheme, Background, paintRange } from './theme.js';
+import { buildChips, buildSwatches } from './controls.js';
+import { setupPapers } from './papers.js';
 import { setupRefs } from './refs.js';
 import { setupCajon } from './cajon.js';
 
@@ -99,47 +101,6 @@ async function reloadGlyphs() {
 /* Controles de ajustes                                                */
 /* ------------------------------------------------------------------ */
 const INK_COLORS = [['Azul', '#1d2f8f'], ['Negro', '#16171c'], ['Azul medio', '#2f6fb5'], ['Rojo', '#a8222c'], ['Verde', '#1f5a3a'], ['Sepia', '#5a3a22'], ['Grafito', '#3a3a40']];
-const PAPER_COLORS = [['Blanco cálido', '#fcfaf4'], ['Blanco', '#ffffff'], ['Crema', '#fbf6ea'], ['Amarillento', '#f3ead3'], ['Azulado', '#eef2f6'], ['Rosado', '#fbeff0']];
-const LINE_COLORS = [['Azul', '#86a9d6'], ['Azul oscuro', '#5d82b8'], ['Beige', '#cfc6b0'], ['Gris', '#b8b8b8'], ['Rosado', '#d8a2a8']];
-
-function buildSwatches(host, list, getVal, onPick) {
-  host.innerHTML = '';
-  const mk = (name, color) => {
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'sw'; b.style.background = color; b.title = name; b.setAttribute('aria-label', name);
-    b.dataset.color = color;
-    b.addEventListener('click', () => { onPick(color, false); refresh(); });
-    return b;
-  };
-  list.forEach(([n, c]) => host.append(mk(n, c)));
-  const cu = document.createElement('label');
-  cu.className = 'sw custom'; cu.title = 'Otro color';
-  const inp = document.createElement('input'); inp.type = 'color'; inp.setAttribute('aria-label', 'Elegir otro color');
-  inp.addEventListener('input', () => { onPick(inp.value, true); refresh(); });
-  cu.append(inp); host.append(cu);
-  function refresh() {
-    const v = getVal().toLowerCase();
-    let found = false;
-    $$('.sw[data-color]', host).forEach((b) => { const on = b.dataset.color.toLowerCase() === v; b.setAttribute('aria-pressed', on); if (on) found = true; });
-    cu.classList.toggle('on', !found);
-    if (!found) inp.value = v;
-  }
-  host._refresh = refresh;
-  refresh();
-}
-
-function buildChips(host, items, getVal, onPick) {
-  host.innerHTML = '';
-  for (const [key, label] of items) {
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'chip'; b.textContent = label; b.dataset.key = key;
-    b.addEventListener('click', () => { onPick(key); refresh(); });
-    host.append(b);
-  }
-  function refresh() { $$('.chip', host).forEach((b) => b.setAttribute('aria-pressed', b.dataset.key === getVal())); }
-  host._refresh = refresh;
-  refresh();
-}
 
 function settingChanged(path) {
   saveSettings();
@@ -163,6 +124,10 @@ const FORMAT = {
   ghostAlpha: pct,
   'paper.lineSpacing': (v) => `${fmt(v)} mm`,
   'paper.grain': pct,
+  'paper.lineWidth': (v) => `${fmt(v, 2)} mm`,
+  'paper.lineOpacity': pct,
+  'paper.marginX': (v) => `${Math.round(v)} mm`,
+  'paper.imageOpacity': pct,
 };
 function defaultFor(path) {
   if (path === 'thickness') return INSTRUMENTS[S.instrument].thickness;
@@ -198,7 +163,9 @@ function syncControls() {
     if (el._out) el._out.textContent = (FORMAT[el.dataset.s] || String)(parseFloat(el.value));
     if (el.type === 'range') paintRange(el);
   });
-  ['#inst-chips', '#paper-chips', '#overflow-chips', '#refmode-chips', '#reffont-chips', '#source-chips', '#ink-swatches', '#paper-swatches', '#line-swatches'].forEach((id) => $(id)._refresh?.());
+  ['#inst-chips', '#overflow-chips', '#refmode-chips', '#reffont-chips', '#source-chips', '#ink-swatches'].forEach((id) => $(id)._refresh?.());
+  papersApi?.sync();
+  ['#paper-swatches', '#line-swatches', '#margin-swatches', '#deco-swatches'].forEach((id) => $(id)?._refresh?.());
 }
 
 function setupResets() {
@@ -223,13 +190,6 @@ function buildControls() {
     syncControls(); settingChanged('instrument');
   });
   buildSwatches($('#ink-swatches'), INK_COLORS, () => S.color, (c, custom) => { S.color = c; S.colorCustom = true; settingChanged('color'); });
-  buildChips($('#paper-chips'), [['rayado', 'Rayada'], ['cuadriculado', 'Cuadriculada'], ['liso', 'Lisa']], () => S.paper.type, (k) => {
-    const p = PAPER_PRESETS[k];
-    Object.assign(S.paper, { type: k, lineSpacing: p.lineSpacing, margin: p.margin, grid: p.grid });
-    syncControls(); settingChanged('paper.type');
-  });
-  buildSwatches($('#paper-swatches'), PAPER_COLORS, () => S.paper.color, (c) => { S.paper.color = c; settingChanged('paper.color'); });
-  buildSwatches($('#line-swatches'), LINE_COLORS, () => S.paper.lineColor, (c) => { S.paper.lineColor = c; settingChanged('paper.lineColor'); });
   buildChips($('#overflow-chips'), [['back', 'En el dorso'], ['new', 'En otra hoja']], () => S.overflow, (k) => { S.overflow = k; settingChanged('overflow'); });
   buildChips($('#refmode-chips'), [['panel', 'Al costado'], ['float', 'Ventana flotante'], ['ghost', 'Fantasma en la hoja']], () => S.refMode, (k) => { S.refMode = k; saveSettings(); refsApi?.placeRef(); refsApi?.refreshGhost(); });
   buildChips($('#reffont-chips'), [['legible', 'Legible'], ['hand', 'Mi letra']], () => S.refFont, (k) => { S.refFont = k; saveSettings(); refsApi?.refreshView(); });
@@ -376,6 +336,13 @@ function markDock() {
     b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
   });
 }
+// el panel de Papel es más ancho cuando muestra la galería o la búsqueda
+function fitLeft() {
+  const pop = $('#pop');
+  const wide = openPanel === 'paper' && !!papersApi?.isWide();
+  pop.classList.toggle('wide', wide);
+  $('#view-write').style.setProperty('--left-w', openPanel ? (wide ? '500px' : '376px') : '0px');
+}
 function setLeft(name) {
   openPanel = name;
   const pop = $('#pop');
@@ -387,7 +354,8 @@ function setLeft(name) {
   }
   pop.classList.toggle('open', !!sec);
   pop.setAttribute('aria-label', sec ? sec.querySelector('h2').textContent : 'Ajustes');
-  $('#view-write').style.setProperty('--left-w', sec ? '376px' : '0px');
+  fitLeft();
+  if (name === 'paper') papersApi?.onOpen();
   if (name && isMobile()) { $('#cap').blur(); setNote(false); cajonApi?.close(); }
   markDock();
 }
@@ -403,7 +371,7 @@ function togglePanel(name) {
   else setLeft(openPanel === name ? null : name);
 }
 const closeDrawers = () => { setLeft(null); setNote(false); };
-let refsApi = null, cajonApi = null;
+let refsApi = null, cajonApi = null, papersApi = null;
 
 /* ------------------------------------------------------------------ */
 /* Hojas: dar vuelta, tomar otra, cambiar de cara                      */
@@ -935,6 +903,7 @@ async function init() {
   renderHandStatus();
 
   setupNewLetter();
+  papersApi = setupPapers({ S: () => S, writer: () => writer, settingChanged, syncControls, toast, ask, LS, fitLeft });
   refsApi = setupRefs({
     S: () => S, saveSettings, writer: () => writer, lib, toast, ask, isMobile, LS,
     inFocus: () => false, isNoteOpen: () => noteOpen, openNote: () => setNote(true), closeNote: () => setNote(false), syncControls,

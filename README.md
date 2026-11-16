@@ -16,7 +16,8 @@ como app en PC y celular y funciona sin conexión. Tu letra y tus cartas se guar
    (sin dorso). Cuando una hoja se llena, la carta sigue en el dorso o en otra hoja, a tu elección.
 4. **Archivero** → un cajón en una esquina que se abre al pasar el cursor y muestra las cartas de lomo (por carpeta). Al hacer clic en una se muestra de frente para elegirla y arrastrarla a la referencia; también se buscan, se leen, se editan y se exportan o importan.
    La referencia se ve al costado, en una ventana flotante o «fantasma» sobre la hoja, con letra legible o con tu letra.
-5. **Imprimir** → se dibuja cada hoja a 300 ppp. Si hay hojas con dorso podés elegir doble cara automática,
+5. **Papel** → galería de modelos y de tus hojas guardadas; editor de líneas, margen, color, textura, imagen de fondo y decoraciones; y buscador de imágenes en internet (Openverse y Wikimedia sin clave; Unsplash, Pexels y Pixabay con una clave gratuita que guardás solo en tu dispositivo).
+6. **Imprimir** → se dibuja cada hoja a 300 ppp. Si hay hojas con dorso podés elegir doble cara automática,
    una cara por hoja, o doble cara a mano (el navegador no puede saber qué impresora tenés).
 
 ## Estructura
@@ -33,7 +34,8 @@ js/glyphs.js        biblioteca de letras, lapiceras (sprites) y animación de tr
 js/skeleton.js      esqueleto de cada letra -> orden en que se dibuja
 js/capture.js       foto -> homografía -> letras sueltas (solo tinta)
 js/template.js      geometría de la plantilla imprimible
-js/paper.js         papeles (rayado, cuadriculado, liso)
+js/paper.js         dibujo del papel (líneas, margen, textura, imagen, decoraciones)
+js/papers.js        panel Papel: galería, editor y buscador; js/webpapers.js: fuentes de imágenes; js/controls.js: botones y paletas
 js/db.js            IndexedDB (letra y cartas) + exportar/importar
 js/print.js         impresión
 sw.js, manifest.webmanifest   instalable y offline

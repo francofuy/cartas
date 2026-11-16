@@ -7,7 +7,7 @@ let dbp = null;
 function open() {
   if (dbp) return dbp;
   dbp = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 2);
+    const req = indexedDB.open(DB_NAME, 3);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains('glyphs')) {
@@ -17,6 +17,8 @@ function open() {
       }
       // cartas de referencia (archivero)
       if (!db.objectStoreNames.contains('refs')) db.createObjectStore('refs', { keyPath: 'id' });
+      // imágenes de fondo de las hojas (galería, internet o subidas)
+      if (!db.objectStoreNames.contains('papers')) db.createObjectStore('papers', { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -124,4 +126,24 @@ export async function importRefs(file) {
   if (data.app !== 'puno-y-letra' || data.kind !== 'refs' || !Array.isArray(data.refs)) throw new Error('El archivo no parece ser un archivero de Puño y Letra.');
   await tx('refs', 'readwrite', (s) => { for (const r of data.refs) if (r && r.id && typeof r.text === 'string') s.put(r); });
   return data.refs.length;
+}
+
+/* ---------- imágenes de fondo de las hojas ---------- */
+export async function putPaperImage(rec) { await tx('papers', 'readwrite', (s) => { s.put(rec); }); }
+export async function deletePaperImage(id) { await tx('papers', 'readwrite', (s) => { s.delete(id); }); }
+export async function getPaperImage(id) {
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const r = db.transaction('papers').objectStore('papers').get(id);
+    r.onsuccess = () => resolve(r.result || null);
+    r.onerror = () => reject(r.error);
+  });
+}
+export async function allPaperImages() {
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const r = db.transaction('papers').objectStore('papers').getAll();
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
 }
