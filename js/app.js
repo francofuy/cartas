@@ -267,7 +267,8 @@ function fit() {
   if (availW < 80 || availH < 80) return;
   // por defecto la hoja usa todo el ancho (hasta 760 px) para que la letra se lea; "Hoja entera" la ajusta a la altura
   const base = isMobile() ? availW : fitMode === 'page' ? Math.min(availW, (availH * 210) / 297) : Math.min(availW, 760);
-  const w = Math.round(base * zoom);
+  let w = Math.round(base * zoom);
+  if (focusApi?.wantsTexture()) w = focusApi.textureCssW(); // modo foco en 3D: la hoja se dibuja más grande para que la textura se lea bien
   if (Math.abs(w - writer.cssW) > 1) writer.resize(w);
   curlApi?.place();
 }
@@ -900,7 +901,7 @@ async function init() {
     paperBlob: async (id) => papersApi?.imageBlob(id),
     onOpenDialog: () => { lastDeletedVersion = null; renderVersions(); },
   });
-  focusApi = setupFocus({ writer: () => writer, toast, animOn });
+  focusApi = setupFocus({ writer: () => writer, toast, animOn, refit: () => fit() });
   refsApi = setupRefs({
     S: () => S, saveSettings, writer: () => writer, lib, toast, ask, isMobile, LS,
     inFocus: () => false, isNoteOpen: () => noteOpen, openNote: () => setNote(true), closeNote: () => setNote(false), syncControls,

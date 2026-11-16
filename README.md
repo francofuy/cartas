@@ -33,7 +33,7 @@ js/layout.js        renglones, caras (frente/dorso), hojas, imperfecciones deter
 js/refs.js          datos de las cartas y referencia (costado / flotante / fantasma); js/cajon.js: el cajón de la esquina
 js/curl.js          gesto de la esquina para dar vuelta la hoja
 js/sound.js         sonido suave de la lapicera (Web Audio, sin archivos)
-js/letters.js       cartas en curso, cerrar la carta, cartas cerradas (lista en «Mis cartas») e impresión única; js/focus.js: modo foco (todo se apaga y una luz acompaña la lapicera); js/seal.js: animación del sobre y el sello; js/printflow.js: ventana de impresión
+js/letters.js       cartas en curso, cerrar la carta, cartas cerradas (lista en «Mis cartas») e impresión única; js/focus.js: modo foco (todo se apaga); js/focus3d.js: la hoja en 3D como en una máquina de escribir, con luz en V (usa vendor/three.min.js, MIT, que se carga solo al entrar al modo foco); js/seal.js: animación del sobre y el sello; js/printflow.js: ventana de impresión
 js/glyphs.js        biblioteca de letras, lapiceras (sprites) y animación de trazo
 js/skeleton.js      esqueleto de cada letra -> orden en que se dibuja
 js/capture.js       foto -> homografía -> letras sueltas (solo tinta)

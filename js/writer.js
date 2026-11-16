@@ -32,6 +32,8 @@ export class Writer {
     this.onChange = null;   // (info) => void
     this.onStroke = null;   // (char, durSeconds) => void  (para el sonido)
     this.onErase = null;
+    this.onDraw = null;     // () => void  (el modo foco 3D actualiza su textura)
+    this.noCaret = false;   // sin cursor titilante sobre la hoja
     this.ghostText = null;  // texto de referencia que se ve tenue sobre la hoja
     this.ghostLayout = null;
     this.ghostAlpha = 0.3;
@@ -309,7 +311,7 @@ export class Writer {
     const ci = Math.min(this.caret, firstPending);
     const c = this.layout.caret[ci] || this.layout.caret[this.layout.caret.length - 1];
     this._pen = c || null;
-    if (this.focused && this.blinkOn) {
+    if (this.focused && this.blinkOn && !this.noCaret) {
       if (c && c.page === this.page) {
         ctx.fillStyle = this.S.color;
         ctx.globalAlpha = 0.7;
@@ -318,6 +320,7 @@ export class Writer {
         ctx.globalAlpha = 1;
       }
     }
+    this.onDraw?.();
     if (busy) this.schedule();
   }
 

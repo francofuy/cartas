@@ -114,3 +114,16 @@ body.focus #bgfx { opacity: 0; transition: opacity 500ms ease; }
 /* en ventanas medianas el botón de cartas cerradas queda como ícono con número, para no pisar las pestañas del centro */
 .top-l .letter-chip#letter-chip { max-width: clamp(150px, 20vw, 280px); }
 @media (min-width: 900px) and (max-width: 1180px) { #sealed-btn .t { display: none; } #sealed-btn { padding: 0 12px; } }
+
+/* modo foco en 3D: la hoja de papel real bajo una luz en V, a pantalla completa */
+#focus3d { position: fixed; inset: 0; z-index: 10; background: #08080b; opacity: 0; transition: opacity 520ms ease; touch-action: none; overflow: hidden; }
+#focus3d.on { opacity: 1; }
+#focus3d[hidden] { display: none; }
+#focus3d canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.f3-glow { position: absolute; left: 0; top: 0; width: 70vmax; aspect-ratio: 1; margin: -35vmax 0 0 -35vmax; pointer-events: none; mix-blend-mode: screen; will-change: transform;
+  background: radial-gradient(closest-side, rgb(var(--gc, 255 190 120) / .5), rgb(var(--gc, 255 165 95) / .2) 40%, rgb(var(--gc, 255 150 80) / 0)); }
+.f3-vig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 58%, rgb(0 0 0 / 0) calc(60% - var(--vs, .8) * 18%), rgb(0 0 0 / .85) 100%); }
+.f3-vig::after { content: ""; position: absolute; inset: 0; opacity: var(--grain, .07); mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+@media (prefers-reduced-motion: reduce) { #focus3d { transition: none; } }
+@media print { #focus3d { display: none !important; } }

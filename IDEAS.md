@@ -33,7 +33,7 @@ Luz y tinta húmeda, portalápices; tachones, formato a mano y firma; fotos y ci
 Hoy: elipse suave bajo la punta. Se pidió una luz «en V». Opciones mostradas: elipse, V que abre hacia arriba, cono de lámpara desde arriba, Λ desde la punta, haz diagonal, V con ambiente. Falta elegir y ajustar ángulo, alcance y tono.
 Segunda ronda (pedido: V más abierta, origen más abajo, punta sin filo, como linterna o foco cálido): seis linternas (base, foco amplio, con núcleo, inclinada, abanico corto, con penumbra) en una página con controles de apertura, origen, suavidad de la punta, oscuridad y tono.
 
-## Hoja de máquina de escribir en el modo foco (prototipo mostrado, sin elegir)
+## Hoja de máquina de escribir en el modo foco (YA EN LA APP: js/focus3d.js)
 Idea: cámara fija con la lapicera siempre en el mismo punto de la pantalla; la hoja se desliza a izquierda/derecha según dónde se escribe y sube en cada Enter. Como en una máquina de escribir, se enrolla sobre un rodillo y cae hacia atrás (arco sin estirar el papel). Luz: linterna cálida un poco más abajo de las letras. Prototipo aparte con controles de radio del rodillo, cuánto se enrolla, altura de cámara y de la luz. En la app haría falta WebGL (three.js, empaquetado para funcionar sin conexión). La versión anterior (hoja cóncava y combada) se descartó.
 
 ### Valores elegidos para el modo foco con hoja de máquina de escribir
@@ -43,3 +43,6 @@ Idea: cámara fija con la lapicera siempre en el mismo punto de la pantalla; la 
 - Distancia de la luz al papel 105 mm · Intensidad 170 % (en la V de 150 %) · Oscuridad del fondo 95 % · Resplandor 10 %
 - Altura de la luz: por encima · Velocidad 14 letras/s · Rodillo oculto
 - Luz: se pidió una forma de V más marcada. Hecho en un editor de luz aparte (V con vértice, eje, apertura, asimetría, borde, curva de brazos, punta redondeada, alcance, núcleo; color por temperatura; halo; rebote; resplandor; bordes; grano; parpadeo; guías arrastrables; puntos de partida; copiar/pegar valores). Los valores finales que elija se copian desde ahí.
+
+### Valores finales de la luz (los que pegaste desde el editor, ya aplicados en la app)
+V de 70°, vértice (1, −41), borde 67, punta 50, alcance 262, núcleo 30/45, intensidad 80 %, 2850 K, color 89 %, luz a 220 mm, caída 10, halo 49 %, rebote 22 %, fondo 82 %, resplandor 10 %, bordes 49 %, grano 7 %. Escena: rodillo 38, rigidez 55, enrollado 210°, cámara −10° y 61 %, giro 14 %. Están en LOOK dentro de js/focus3d.js.

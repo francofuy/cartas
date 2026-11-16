@@ -1,9 +1,11 @@
 // Modo foco: se apaga todo (barra, herramientas, botones) y una luz tibia acompaña la punta de la lapicera, siempre un poco más abajo
 // de donde escribís. Se sale con Esc, con Ctrl + . o con el botón que aparece al mover el mouse.
 import { $ } from './util.js';
+import { createFocus3D, webglOk, TEX_W_PX } from './focus3d.js';
 
-export function setupFocus({ writer, toast, animOn }) {
+export function setupFocus({ writer, toast, animOn, refit }) {
   const fx = $('#focus-fx'), exit = $('#focus-exit'), btn = $('#btn-focus');
+  let f3 = null, use3d = false, texBoost = false;
   let on = false, raf = 0, lx = 0, ly = 0, tx = 0, ty = 0, rx = 300, init = false, hideT = 0;
 
   const set = () => {
@@ -27,11 +29,20 @@ export function setupFocus({ writer, toast, animOn }) {
     exit.hidden = false; exit.classList.add('show'); clearTimeout(hideT);
     hideT = setTimeout(() => exit.classList.remove('show'), 2400);
   }
-  function enter() {
+  async function enter() {
     if (on) return;
-    on = true; init = false; document.body.classList.add('focus');
+    on = true; init = false; use3d = false; document.body.classList.add('focus');
     btn?.setAttribute('aria-pressed', 'true');
-    fx.classList.add('on'); loop();
+    $('#cap')?.focus({ preventScroll: true });
+    if (webglOk()) { // la hoja en 3D, como en una máquina de escribir; si algo falla, queda la luz simple
+      try {
+        texBoost = true; refit?.(); const w = writer(); if (w) w.noCaret = true;
+        f3 = f3 || createFocus3D({ writer, animOn });
+        await f3.start(); use3d = true;
+      } catch (e) { console.warn('Modo foco 3D no disponible, uso la luz simple.', e); texBoost = false; const w = writer(); if (w) w.noCaret = false; refit?.(); }
+    }
+    if (!on) { if (use3d) { f3.stop(); texBoost = false; refit?.(); } return; } // se salió mientras cargaba
+    if (!use3d) { fx.classList.add('on'); loop(); }
     $('#cap')?.focus({ preventScroll: true });
     toast(matchMedia('(pointer: coarse)').matches ? 'Modo foco. Tocá la pantalla para ver el botón de salir.' : 'Modo foco. Para salir: Esc o Ctrl + .', 3200);
     showExit();
@@ -42,6 +53,7 @@ export function setupFocus({ writer, toast, animOn }) {
     btn?.setAttribute('aria-pressed', 'false');
     exit.classList.remove('show'); exit.hidden = true; clearTimeout(hideT);
     cancelAnimationFrame(raf); raf = 0;
+    if (use3d) { f3.stop(); use3d = false; texBoost = false; const w = writer(); if (w) w.noCaret = false; refit?.(); }
     $('#cap')?.focus({ preventScroll: true });
   }
   const toggle = () => (on ? leave() : enter());
@@ -50,5 +62,5 @@ export function setupFocus({ writer, toast, animOn }) {
   exit.addEventListener('click', leave);
   document.addEventListener('pointermove', showExit, { passive: true });
   document.addEventListener('pointerdown', showExit, { passive: true });
-  return { toggle, leave, isOn: () => on };
+  return { toggle, leave, isOn: () => on, wantsTexture: () => texBoost, textureCssW: () => Math.round(TEX_W_PX / Math.min(window.devicePixelRatio || 1, 3)) };
 }
