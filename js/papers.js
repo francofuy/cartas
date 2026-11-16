@@ -336,6 +336,7 @@ export function setupPapers(h) {
     sync() { $('#paper-chips')._refresh?.(); refreshDeco(); if (lastImg !== S().paper.imageId) renderImageBox(); },
     onOpen() { setTab(tab); },
     refreshAll() { renderGallery(); renderImageBox(); },
+    async imageBlob(id) { const r = await getRec(id); return r ? r.blob : null; },
     ensureImage,
   };
 }

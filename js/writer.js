@@ -312,6 +312,15 @@ export class Writer {
     if (busy) this.schedule();
   }
 
+  // solo la tinta, sobre fondo transparente (se usa al cerrar la carta: el papel se dibuja aparte)
+  renderInkTo(canvas, pageIdx, ppm) {
+    canvas.width = Math.round(PAGE_W * ppm);
+    canvas.height = Math.round(PAGE_H * ppm);
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    for (const it of this.layout.items) if (it && it.page === pageIdx) this.drawItem(ctx, it, ppm);
+  }
+
   /* ---------- salida a alta resolución (impresión) ---------- */
   renderPageTo(canvas, pageIdx, ppm) {
     canvas.width = Math.round(PAGE_W * ppm);

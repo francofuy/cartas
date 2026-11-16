@@ -25,6 +25,9 @@ const P = {
   zoom: '<circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2M11 8.5v5M8.5 11h5"/>',
   turnR: '<path d="M6 4h12v9l-6 7H6zM12 20v-4.5a2.5 2.5 0 0 1 2.5-2.5H18"/>',
   turnL: '<path d="M18 4H6v9l6 7h6zM12 20v-4.5a2.5 2.5 0 0 0-2.5-2.5H6"/>',
+  letters: '<path d="M7 4h11v13H7zM4.5 7v13.5H15"/><path d="M10 9h5M10 12h5"/>',
+  seal: '<circle cx="12" cy="10" r="5.5"/><path d="m9 14.5-1.5 6 4.5-2.5 4.5 2.5-1.5-6M10 10h4"/>',
+  mail: '<path d="M4 6h16v12H4zM4 7l8 6.5L20 7"/>',
   cabinet: '<path d="M4 4h16v16H4zM4 12h16M10 8h4M10 16h4"/>',
 };
 export function icon(name, size) {

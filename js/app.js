@@ -5,7 +5,8 @@ import * as DB from './db.js';
 import { PAPER_PRESETS } from './paper.js';
 import { TEMPLATE_PAGES, CHAR_GROUPS, ALL_CHARS, pageLabel } from './chars.js';
 import { loadPhoto, detectMarkers, defaultCorners, warpPage, detectPageCode, extractGlyphs } from './capture.js';
-import { printLetter, printTemplates } from './print.js';
+import { printTemplates, PRINT_DPI_PPM } from './print.js';
+import { createPrintFlow, printJobs } from './printflow.js';
 import { icon, hydrateIcons } from './icons.js';
 import { DEFAULT_THEME, applyTheme, Background, paintRange } from './theme.js';
 import { buildChips, buildSwatches } from './controls.js';
@@ -14,6 +15,7 @@ import { setupRefs } from './refs.js';
 import { setupCajon } from './cajon.js';
 import { setupCurl } from './curl.js';
 import { PenSound } from './sound.js';
+import { setupLetters } from './letters.js';
 import { exportBackup, importBackup, describe as describeBackup } from './backup.js';
 
 /* ------------------------------------------------------------------ */
@@ -307,7 +309,7 @@ function diff(a, b) {
   return { start: s, del: ea - s, ins: b.slice(s, eb) };
 }
 
-const persistDraft = debounce(() => LS.set('pyl.draft', { text: writer.text }), 350);
+const persistDraft = debounce(() => lettersApi?.saveActive(), 350);
 
 function setupInput() {
   const cap = $('#cap');
@@ -355,7 +357,7 @@ function setupInput() {
 let openPanel = null, noteOpen = false;
 function markDock() {
   $$('.dock-btn[data-panel]').forEach((b) => {
-    const on = b.dataset.panel === 'note' ? noteOpen : b.dataset.panel === 'cab' ? !!cajonApi?.isOpen() : b.dataset.panel === openPanel;
+    const on = b.dataset.panel === 'note' ? noteOpen : b.dataset.panel === 'cab' ? !!cajonApi?.isOpen() : b.dataset.panel === 'mail' ? !!lettersApi?.isOpen() : b.dataset.panel === openPanel;
     b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
   });
 }
@@ -390,11 +392,12 @@ function setNote(open) {
 }
 function togglePanel(name) {
   if (name === 'note') setNote(!noteOpen);
-  else if (name === 'cab') { if (isMobile()) { setLeft(null); setNote(false); } cajonApi.toggle(); }
+  else if (name === 'cab') { if (isMobile()) { setLeft(null); setNote(false); lettersApi?.closeBuzon(); } cajonApi.toggle(); }
+  else if (name === 'mail') { if (isMobile()) { setLeft(null); setNote(false); cajonApi?.close(); } lettersApi.toggleBuzon(); }
   else setLeft(openPanel === name ? null : name);
 }
 const closeDrawers = () => { setLeft(null); setNote(false); };
-let refsApi = null, cajonApi = null, papersApi = null, curlApi = null;
+let refsApi = null, cajonApi = null, papersApi = null, curlApi = null, lettersApi = null;
 
 /* ------------------------------------------------------------------ */
 /* Hojas: dar vuelta, tomar otra, cambiar de cara                      */
@@ -518,7 +521,7 @@ function setupNote() {
 /* ------------------------------------------------------------------ */
 let lastDeletedVersion = null; // { v, i }: se puede deshacer mientras la ventana siga abierta
 function renderVersions() {
-  const list = LS.get('pyl.versions', []);
+  const list = LS.get('pyl.versions', []).filter((v) => !v.draftId || v.draftId === lettersApi?.activeId());
   const ul = $('#ver-list');
   ul.innerHTML = '';
   if (lastDeletedVersion) {
@@ -555,12 +558,11 @@ function renderVersions() {
   }
 }
 function setupVersions() {
-  $('#btn-versions').addEventListener('click', () => { lastDeletedVersion = null; renderVersions(); $('#versions').showModal(); });
   $('#ver-save').addEventListener('click', () => {
     if (!writer.text.trim()) { toast('Escribí algo antes de guardar una versión.'); return; }
     const list = LS.get('pyl.versions', []);
     const name = $('#ver-name').value.trim() || writer.text.trim().split('\n')[0].slice(0, 40) || 'Sin título';
-    list.unshift({ id: uid(), name, ts: Date.now(), text: writer.text });
+    list.unshift({ id: uid(), name, ts: Date.now(), text: writer.text, draftId: lettersApi?.activeId() });
     LS.set('pyl.versions', list.slice(0, 60));
     $('#ver-name').value = '';
     renderVersions();
@@ -571,66 +573,20 @@ function setupVersions() {
 /* ------------------------------------------------------------------ */
 /* Imprimir                                                            */
 /* ------------------------------------------------------------------ */
-/* trabajos de impresión según el modo (cada trabajo = lista de caras; null = hoja en blanco) */
-function printJobs(mode) {
-  const L = writer.layout, sh = L.sheets;
-  const hasBack = sh.some((x) => x.back != null);
-  if (!hasBack || mode === 'single') return [[...Array(L.pages).keys()]];
-  if (mode === 'manual') return [sh.map((x) => x.front), sh.slice().reverse().map((x) => (x.back != null ? x.back : null))];
-  // automática: frente y dorso en pares; una hoja sin dorso lleva el dorso en blanco si después viene otra con dorso
-  let lastBack = -1; sh.forEach((x, i) => { if (x.back != null) lastBack = i; });
-  return [sh.flatMap((x, i) => (x.back != null ? [x.front, x.back] : i < lastBack ? [x.front, null] : [x.front]))];
+// lo que imprime el botón «Imprimir» de la barra: la carta que está en el editor
+function editorSource() {
+  const L = writer.layout;
+  return {
+    sheets: L.sheets, pages: L.pages,
+    render: (i) => new Promise((res) => { const c = document.createElement('canvas'); writer.renderPageTo(c, i, PRINT_DPI_PPM); c.toBlob(res, 'image/jpeg', 0.95); }),
+  };
 }
-
+let printflow = null;
 function setupPrint() {
-  const dlg = $('#printdlg');
-  let step = 1;
-  const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
-  const refresh = () => {
-    const L = writer.layout, nS = L.sheets.length, nB = L.sheets.filter((x) => x.back != null).length;
-    const hasBack = nB > 0;
-    $('#print-modes').hidden = !hasBack || step === 2;
-    $$('input[name="pmode"]').forEach((r) => { r.checked = r.value === S.printMode; });
-    const go = $('#print-go'), tip = $('#print-tip'), info = $('#print-info');
-    const real = 'En el cuadro de impresión elegí tamaño real (100 %), sin márgenes ni encabezados.';
-    if (!hasBack) {
-      info.textContent = `Se va a imprimir ${plural(nS, 'hoja A4', 'hojas A4')}, una cara cada una. ${real}`;
-      tip.textContent = ''; go.textContent = 'Imprimir carta';
-      return;
-    }
-    info.textContent = `Tu carta tiene ${plural(nS, 'hoja', 'hojas')}, ${nB === nS ? 'todas con dorso' : `${nB} con dorso y ${nS - nB} sin dorso`}. ${real}`;
-    if (S.printMode === 'duplex') {
-      tip.textContent = 'En el cuadro de impresión activá «Imprimir en ambas caras» y elegí «Voltear por el borde largo». Las hojas sin dorso salen con el dorso en blanco. El navegador no puede saber si tu impresora lo permite: si no aparece esa opción, volvé y elegí «Una cara por hoja».';
-      go.textContent = 'Imprimir carta';
-    } else if (S.printMode === 'single') {
-      tip.textContent = `Cada cara sale en su propia hoja: ${plural(L.pages, 'hoja', 'hojas')} en total.`;
-      go.textContent = 'Imprimir carta';
-    } else if (step === 1) {
-      tip.textContent = `Paso 1 de 2: se imprimen los frentes (${plural(nS, 'hoja', 'hojas')}). Dejá la impresión en una sola cara.`;
-      go.textContent = 'Imprimir los frentes';
-    } else {
-      info.textContent = 'Paso 2 de 2: los dorsos.';
-      tip.textContent = 'Tomá la pila tal como salió, dala vuelta como la página de un cuaderno (por el borde largo) y volvé a ponerla en la bandeja. Los dorsos salen en orden inverso para que cada uno caiga detrás de su frente.';
-      go.textContent = 'Imprimir los dorsos';
-    }
-  };
-  const open = () => {
+  printflow = createPrintFlow({ S: () => S, saveSettings, toast, busy, unbusy });
+  $('#btn-print').addEventListener('click', () => {
     if (!writer.text.replace(/[\f\v\s]/g, '')) { toast('Escribí algo para poder imprimir.'); return; }
-    step = 1; refresh(); dlg.showModal();
-  };
-  $('#btn-print').addEventListener('click', open);
-  $$('input[name="pmode"]').forEach((r) => r.addEventListener('change', () => { S.printMode = r.value; saveSettings(); step = 1; refresh(); }));
-  $('#print-go').addEventListener('click', async (e) => {
-    e.preventDefault();
-    dlg.close();
-    const jobs = printJobs(S.printMode);
-    const job = jobs[Math.min(step, jobs.length) - 1];
-    busy('Preparando las hojas para imprimir…');
-    let res = 'ok';
-    try { res = await printLetter(writer, job); } catch (err) { console.error(err); toast('No pude preparar la impresión.'); res = 'error'; }
-    unbusy();
-    if (res === 'blocked') toast('Este entorno no deja abrir la impresión. Abrí la app directamente en el navegador para imprimir.', 6500);
-    if (res === 'ok' && S.printMode === 'manual' && jobs.length > 1 && step === 1) { step = 2; refresh(); dlg.showModal(); } else step = 1;
+    printflow.open(editorSource());
   });
 }
 
@@ -883,46 +839,6 @@ function setupNotice() {
   updateNotice();
 }
 
-/* nueva carta: mantener apretado ~1 s (E12). Con teclado, Enter o espacio piden confirmación. */
-let undoCarta = null;
-function setupNewLetter() {
-  const btn = $('#btn-new'), fill = $('i', btn);
-  const HOLD = 950;
-  let t0 = 0, raf = 0, id = null;
-  const reset = () => { cancelAnimationFrame(raf); raf = 0; id = null; btn.classList.remove('full'); fill.style.transform = 'scaleX(0)'; fill.style.transition = 'transform 200ms ease'; };
-  const clear = () => {
-    const prev = { text: writer.text, seed: S.seed };
-    S.seed = 1 + Math.floor(Math.random() * 1e6); saveSettings();
-    writer.setText(''); writer._syncCap(); persistDraft();
-    if (!isMobile()) $('#cap').focus({ preventScroll: true });
-    if (!prev.text.trim()) return;
-    undoCarta = prev;
-    toast('Hoja en blanco. Tu carta anterior sigue acá por unos segundos.', 8000, { label: 'Deshacer', run: () => {
-      S.seed = prev.seed; saveSettings(); writer.setText(prev.text); writer._syncCap(); persistDraft(); undoCarta = null;
-    } });
-  };
-  const step = () => {
-    const p = Math.min(1, (performance.now() - t0) / HOLD);
-    fill.style.transition = 'none'; fill.style.transform = `scaleX(${p})`;
-    if (p >= 1) { btn.classList.add('full'); reset(); clear(); return; }
-    raf = requestAnimationFrame(step);
-  };
-  btn.addEventListener('pointerdown', (e) => {
-    if (e.button > 0) return;
-    id = e.pointerId; try { btn.setPointerCapture(id); } catch { /* nada */ }
-    if (reduceMotion()) { clear(); return; }
-    t0 = performance.now(); raf = requestAnimationFrame(step);
-  });
-  ['pointerup', 'pointercancel', 'pointerleave', 'lostpointercapture'].forEach((ev) => btn.addEventListener(ev, () => { if (raf) reset(); }));
-  btn.addEventListener('keydown', async (e) => {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    e.preventDefault();
-    if (!writer.text.trim()) return;
-    if (await ask('¿Empezar una carta nueva?', 'Se descarta el borrador actual. Si querés conservarlo, guardalo antes como versión.', 'Empezar carta nueva', true)) clear();
-  });
-  btn.addEventListener('contextmenu', (e) => e.preventDefault());
-}
-
 /* onda al tocar el botón principal (E11) */
 function setupRipple() {
   document.addEventListener('pointerdown', (e) => {
@@ -967,8 +883,13 @@ async function init() {
   renderCoverage();
   renderHandStatus();
 
-  setupNewLetter();
   papersApi = setupPapers({ S: () => S, writer: () => writer, settingChanged, syncControls, toast, ask, LS, fitLeft });
+  lettersApi = setupLetters({
+    S: () => S, saveSettings, writer: () => writer, LS, toast, ask, busy, unbusy, get printflow() { return printflow; }, sound, animOn, isMobile,
+    paperBlob: async (id) => papersApi?.imageBlob(id),
+    onOpenDialog: () => { lastDeletedVersion = null; renderVersions(); },
+    onBuzon: () => markDock(),
+  });
   refsApi = setupRefs({
     S: () => S, saveSettings, writer: () => writer, lib, toast, ask, isMobile, LS,
     inFocus: () => false, isNoteOpen: () => noteOpen, openNote: () => setNote(true), closeNote: () => setNote(false), syncControls,
@@ -1003,12 +924,12 @@ async function init() {
     if (e.key !== 'Escape' || document.querySelector('dialog[open]')) return;
     if (refsApi?.peekOpen()) return; // la vista de cerca maneja su propio Esc
     if (cajonApi?.escape()) { $('.dock-btn[data-panel="cab"]')?.focus(); return; }
+    if (lettersApi?.isOpen()) { lettersApi.closeBuzon(); return; }
     if (openPanel) { const b = $(`.dock-btn[data-panel="${openPanel}"]`); setLeft(null); b?.focus(); }
     else if (noteOpen) { setNote(false); $('.dock-btn[data-panel="note"]')?.focus(); }
   });
 
-  const draft = LS.get('pyl.draft', { text: '' });
-  writer.setText(draft.text || '');
+  writer.setText(lettersApi.start());
   writer._syncCap();
   setView('write');
   fit();
@@ -1023,13 +944,13 @@ async function init() {
     };
     vv.addEventListener('resize', onVV);
   }
-  document.addEventListener('visibilitychange', () => { if (document.hidden) LS.set('pyl.draft', { text: writer.text }); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) lettersApi?.saveActive(); });
 
   if (!isMobile()) $('#cap').focus({ preventScroll: true });
   setupNotice();
   viewReady = true;
 
-  window.__pyl = { writer, lib, get S() { return S; }, reloadGlyphs, setView, printJobs };
+  window.__pyl = { writer, lib, get S() { return S; }, reloadGlyphs, setView, printJobs: (mode) => printJobs(writer.layout.sheets, writer.layout.pages, mode) };
 
   if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !location.hostname.includes('localhost')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

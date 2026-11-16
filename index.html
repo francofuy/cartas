@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/archivero.css">
 <link rel="stylesheet" href="css/papeles.css">
+<link rel="stylesheet" href="css/cartas.css">
 </head>
 <body data-view="write">
 <a class="skip" href="#cap" id="skip-sheet">Saltar a la hoja</a>
@@ -55,17 +56,27 @@
   </div>
 </section>
 
+<!-- el buzón: cartas cerradas, se abre al pasar el cursor -->
+<section id="buzon" class="cajon buzon" aria-label="Buzón de cartas cerradas">
+  <div class="cj-box">
+    <button class="cj-handle" id="bz-handle" type="button" aria-expanded="false" aria-controls="bz-body"><b>Buzón</b><span class="cnt" id="bz-count"></span></button>
+    <div class="cj-body" id="bz-body">
+      <div class="cj-tools"><p class="muted bz-note">Cartas cerradas: se imprimen una sola vez.</p><button class="btn sm" id="bz-sent" type="button">Enviadas</button></div>
+      <div class="cj-tray bz-tray" id="bz-tray" role="group" aria-label="Cartas cerradas"></div>
+    </div>
+  </div>
+</section>
+
 <div id="app">
 
   <header class="top">
-    <div aria-hidden="true"></div>
+    <button class="letter-chip g" id="letter-chip" type="button" title="Mis cartas: las que están en curso y las versiones de esta" aria-label="Carta que estás escribiendo. Abrir Mis cartas"><span class="ico" data-icon="letters"></span><span class="t">Carta sin título</span></button>
     <nav class="seg g" id="seg" aria-label="Secciones">
       <i class="pill" aria-hidden="true"></i>
       <button class="tab" data-view="write" aria-pressed="true">Escribir</button>
       <button class="tab" data-view="hand" aria-pressed="false">Mi letra</button>
     </nav>
     <div class="actions">
-      <button class="round g wide" id="btn-versions" title="Versiones guardadas de tu carta" aria-label="Versiones guardadas de tu carta"><span class="ico" data-icon="history"></span><span class="lab">Versiones</span></button>
       <button class="btn primary" id="btn-print">
         <span data-icon="printer" class="ico"></span>
         <span class="lab">Imprimir</span>
@@ -84,6 +95,7 @@
         <button class="dock-btn" data-panel="paper" aria-label="Papel" title="Papel"><span data-icon="paper" class="ico"></span><span class="t">Papel</span></button>
         <button class="dock-btn" data-panel="hand" aria-label="Letra" title="Letra"><span data-icon="hand" class="ico"></span><span class="t">Letra</span></button>
         <span class="dock-sep" aria-hidden="true"></span>
+        <button class="dock-btn" data-panel="mail" aria-label="Buzón de cartas cerradas" title="Buzón de cartas cerradas"><span data-icon="mail" class="ico"></span><span class="t">Buzón</span></button>
         <button class="dock-btn" data-panel="cab" aria-label="Archivero de cartas de referencia" title="Archivero de cartas de referencia"><span data-icon="cabinet" class="ico"></span><span class="t">Archivero</span></button>
         <button class="dock-btn" data-panel="note" aria-label="Referencia: nota o carta del archivero" title="Referencia: nota o carta del archivero"><span data-icon="note" class="ico"></span><span class="t">Referencia</span></button>
       </nav>
@@ -255,9 +267,7 @@
           <div class="zoom" role="group" aria-label="Vista de la hoja">
             <button class="bbtn" id="btn-view" type="button" aria-label="Cambiar la vista de la hoja. Ahora: ancho"><span class="ico" data-icon="zoom"></span><span class="lab">Ancho</span></button>
           </div>
-          <button class="hold" id="btn-new" type="button" title="Mantené apretado para empezar de cero" aria-label="Empezar de cero: mantené apretado para dejar la hoja en blanco">
-            <i aria-hidden="true"></i><span class="hl">Mantené: empezar de cero</span><span class="hs" aria-hidden="true">De cero</span>
-          </button>
+          <button class="bbtn seal" id="btn-seal" type="button" title="Cerrar la carta: se dobla, se sella y se guarda en el Buzón" aria-label="Cerrar la carta: se dobla, se sella y se guarda en el Buzón"><span class="ico" data-icon="seal"></span><span class="lab">Cerrar carta</span></button>
         </div>
       </div>
 
@@ -322,7 +332,7 @@
 
         <section class="card gp" aria-labelledby="h-backup">
           <div class="card-head"><span class="num" aria-hidden="true">4</span><h2 id="h-backup">Copia de seguridad</h2></div>
-          <p class="muted">Un solo archivo con todo lo tuyo: tu letra, las cartas del archivero, las imágenes y hojas guardadas, las versiones y la nota. Sirve para pasar todo a otro dispositivo o para tener un respaldo. No incluye los ajustes de este dispositivo ni las claves de los buscadores.</p>
+          <p class="muted">Un solo archivo con todo lo tuyo: tu letra, las cartas del archivero, las imágenes y hojas guardadas, las versiones y la nota. Sirve para pasar todo a otro dispositivo o para tener un respaldo. No incluye los ajustes de este dispositivo, las claves de los buscadores ni las cartas cerradas del Buzón (esas se imprimen una sola vez y no se pueden copiar).</p>
           <p class="hint" id="backup-info"></p>
           <div class="row wrap">
             <button class="btn primary" id="backup-export">Exportar todo</button>
@@ -368,10 +378,71 @@
 <!-- versiones -->
 <dialog id="versions" class="gp" aria-labelledby="versions-title">
   <form method="dialog" class="dlg">
-    <h3 id="versions-title">Versiones de tu carta</h3>
-    <p class="muted">Copias de la carta que estás escribiendo, por si querés volver atrás. Para tener una carta como modelo para copiar, sumala al archivero.</p>
-    <div class="row"><input type="text" id="ver-name" placeholder="Nombre (opcional)" aria-label="Nombre de la versión"><button class="btn primary" id="ver-save" type="button">Guardar versión</button></div>
-    <ul class="ver-list" id="ver-list"></ul>
+    <h3 id="versions-title">Mis cartas</h3>
+    <section class="dsec">
+      <div class="row between"><h4>Cartas en curso</h4><button class="btn sm primary" id="draft-new" type="button">Carta nueva</button></div>
+      <p class="muted">Podés tener varias a la vez; se guardan solas. Para terminar una, usá «Cerrar carta».</p>
+      <ul class="ver-list" id="draft-list"></ul>
+    </section>
+    <section class="dsec">
+      <h4>Versiones de la carta actual</h4>
+      <p class="muted">Copias para volver atrás. Para tener una carta como modelo para copiar, sumala al archivero.</p>
+      <div class="row"><input type="text" id="ver-name" placeholder="Nombre (opcional)" aria-label="Nombre de la versión"><button class="btn primary" id="ver-save" type="button">Guardar versión</button></div>
+      <ul class="ver-list" id="ver-list"></ul>
+    </section>
+    <div class="row end"><button class="btn" value="close">Cerrar</button></div>
+  </form>
+</dialog>
+
+<!-- cerrar la carta -->
+<dialog id="sealdlg" class="gp" aria-labelledby="seal-title">
+  <form method="dialog" class="dlg">
+    <h3 id="seal-title">Doblar y cerrar la carta</h3>
+    <p class="muted" id="seal-info"></p>
+    <label class="fld">Para quién (opcional, va en el sobre)<input type="text" id="seal-to" maxlength="60" placeholder="Por ejemplo: Sofía"></label>
+    <label class="okrow" id="seal-vers-row"><input type="checkbox" id="seal-vers" checked><span>Borrar también sus <span id="seal-vers-n">versiones guardadas</span></span></label>
+    <p class="hint">Una carta cerrada ya no se puede editar. Se guarda en el Buzón y se imprime <b>una sola vez</b>: después de imprimirla y confirmar que salió bien, se elimina.</p>
+    <div class="row end"><button class="btn" value="cancel">Todavía no</button><button class="btn primary" id="seal-go" value="go">Doblar y cerrar</button></div>
+  </form>
+</dialog>
+
+<!-- una carta del buzón -->
+<dialog id="maildlg" class="gp" aria-labelledby="mail-title">
+  <form method="dialog" class="dlg">
+    <h3 id="mail-title"></h3>
+    <p class="muted" id="mail-meta"></p>
+    <div class="mail-thumbs" id="mail-thumbs"></div>
+    <p class="hint" id="mail-state"></p>
+    <div class="row wrap end">
+      <button class="btn danger" id="mail-del" type="button">Descartar sin imprimir</button>
+      <span class="grow"></span>
+      <button class="btn" value="close">Cerrar</button>
+      <button class="btn" id="mail-confirm" type="button" hidden>Confirmar que se imprimió</button>
+      <button class="btn primary" id="mail-open" type="button">Abrir y imprimir</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ¿salió bien? -->
+<dialog id="okdlg" class="gp" aria-labelledby="ok-title">
+  <form method="dialog" class="dlg">
+    <h3 id="ok-title">¿Salieron bien todas las hojas?</h3>
+    <p class="muted">Si confirmás, la carta se elimina y no se puede volver a imprimir. El navegador no puede saber si la impresora imprimió de verdad: lo decidís vos.</p>
+    <div id="ok-pick" hidden>
+      <p><b>Marcá las hojas que hay que volver a imprimir:</b></p>
+      <div class="okgrid" id="ok-sheets"></div>
+    </div>
+    <div class="row wrap end" id="ok-actions1"><button class="btn" id="ok-no" type="button">No, volver a imprimir</button><button class="btn danger" id="ok-yes" type="button">Sí, eliminar la carta</button></div>
+    <div class="row wrap end" id="ok-actions2" hidden><button class="btn" id="ok-back" type="button">Volver</button><button class="btn primary" id="ok-reprint" type="button">Reimprimir las marcadas</button></div>
+  </form>
+</dialog>
+
+<!-- cartas enviadas (solo queda el rastro, no el contenido) -->
+<dialog id="sentdlg" class="gp" aria-labelledby="sent-title">
+  <form method="dialog" class="dlg">
+    <h3 id="sent-title">Cartas enviadas</h3>
+    <p class="muted">Solo queda el rastro: a quién, cuándo y cuántas hojas. El contenido ya no está guardado.</p>
+    <ul class="ver-list" id="sent-list"></ul>
     <div class="row end"><button class="btn" value="close">Cerrar</button></div>
   </form>
 </dialog>

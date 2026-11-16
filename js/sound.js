@@ -124,6 +124,29 @@ export class PenSound {
     src.connect(hp); hp.connect(g); g.connect(this.master); src.start(t0, rnd(0, 4.5), len + 0.02);
   }
 
+  // doblar la carta: un roce largo y suave
+  fold() {
+    if (!this.ok()) return;
+    const c = this.ctx, t0 = c.currentTime + 0.01, len = rnd(0.32, 0.42);
+    const src = c.createBufferSource(); src.buffer = this.bufs.pink;
+    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.setValueAtTime(rnd(900, 1300), t0); f.frequency.linearRampToValueAtTime(rnd(1800, 2600), t0 + len); f.Q.value = 0.7;
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.28, t0 + len * 0.35); g.gain.linearRampToValueAtTime(0.0001, t0 + len);
+    src.connect(f); f.connect(g); g.connect(this.master); src.start(t0, rnd(0, 4), len + 0.02);
+  }
+
+  // el sello: un golpe sordo y un chasquido corto
+  seal() {
+    if (!this.ok()) return;
+    const c = this.ctx, t0 = c.currentTime + 0.005;
+    const o = c.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(130, t0); o.frequency.exponentialRampToValueAtTime(55, t0 + 0.16);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.5, t0 + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
+    o.connect(g); g.connect(this.master); o.start(t0); o.stop(t0 + 0.25);
+    const n = c.createBufferSource(); n.buffer = this.bufs.white;
+    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800;
+    const g2 = c.createGain(); g2.gain.setValueAtTime(0.18, t0); g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.05);
+    n.connect(hp); hp.connect(g2); g2.connect(this.master); n.start(t0, rnd(0, 4), 0.06);
+  }
+
   // una muestra para oír cómo suena (al tocar el volumen o cambiar de instrumento)
   preview(inst) {
     if (!this.unlock() || !this.ok()) return;

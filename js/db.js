@@ -7,7 +7,7 @@ let dbp = null;
 function open() {
   if (dbp) return dbp;
   dbp = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 3);
+    const req = indexedDB.open(DB_NAME, 4);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains('glyphs')) {
@@ -19,6 +19,8 @@ function open() {
       if (!db.objectStoreNames.contains('refs')) db.createObjectStore('refs', { keyPath: 'id' });
       // imágenes de fondo de las hojas (galería, internet o subidas)
       if (!db.objectStoreNames.contains('papers')) db.createObjectStore('papers', { keyPath: 'id' });
+      // cartas cerradas y selladas (buzón): se imprimen una sola vez
+      if (!db.objectStoreNames.contains('letters')) db.createObjectStore('letters', { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -109,6 +111,18 @@ export async function allPaperImages() {
   const db = await open();
   return new Promise((resolve, reject) => {
     const r = db.transaction('papers').objectStore('papers').getAll();
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+}
+
+/* ---------- cartas cerradas (buzón) ---------- */
+export async function putLetter(rec) { await tx('letters', 'readwrite', (s) => { s.put(rec); }); }
+export async function deleteLetter(id) { await tx('letters', 'readwrite', (s) => { s.delete(id); }); }
+export async function allLetters() {
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const r = db.transaction('letters').objectStore('letters').getAll();
     r.onsuccess = () => resolve(r.result);
     r.onerror = () => reject(r.error);
   });

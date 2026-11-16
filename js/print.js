@@ -39,19 +39,18 @@ export async function printTemplates(pages) {
   return doPrint(r);
 }
 
-export async function printLetter(writer, pageIdxs) {
+// render(idx) devuelve un Blob JPEG de la cara; null en la lista = hoja en blanco
+export async function printFaces(render, idxs) {
   const r = root();
   const urls = [];
-  for (const p of pageIdxs) {
+  for (const p of idxs) {
     if (p == null) { // hoja en blanco: mantiene el orden cuando una hoja no tiene dorso
       const blank = document.createElement('div');
       blank.className = 'print-sheet';
       r.append(blank);
       continue;
     }
-    const c = document.createElement('canvas');
-    writer.renderPageTo(c, p, PRINT_PPM);
-    const blob = await new Promise((res) => c.toBlob(res, 'image/jpeg', 0.95));
+    const blob = await render(p);
     const url = URL.createObjectURL(blob);
     urls.push(url);
     const img = new Image();
@@ -64,3 +63,5 @@ export async function printLetter(writer, pageIdxs) {
   urls.forEach((u) => URL.revokeObjectURL(u));
   return res;
 }
+
+export const PRINT_DPI_PPM = PRINT_PPM;
