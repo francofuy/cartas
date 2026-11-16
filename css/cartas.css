@@ -78,7 +78,11 @@
 .caja.open .caja-tools { opacity: 1; transform: none; pointer-events: auto; }
 .caja.open .caja-tools .btn { pointer-events: auto; }
 @media (min-width: 900px) { .dock-btn[data-panel="mail"] { display: none; } }
-@media (min-width: 900px) and (max-width: 1240px) { .caja { bottom: 78px; } }
+/* En escritorio la caja descansa hundida en la esquina (solo asoma la tapa y la placa) para no tapar la hoja; al acercar el cursor sube y se abre. */
+@media (min-width: 900px) {
+  .caja { right: 10px; bottom: 0; transform-origin: 100% 100%; transform: translateY(0) scale(.74); transition: transform 520ms var(--ease); }
+  .caja.open, .caja.pulse { transform: none; }
+}
 @media (max-width: 899px) {
   .caja { right: 50%; margin-right: -145px; bottom: calc(86px + env(safe-area-inset-bottom)); transform: scale(.92); transform-origin: 50% 100%; }
   .caja:not(.open) { display: none; }
