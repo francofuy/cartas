@@ -1,4 +1,4 @@
-// Mis cartas: varias cartas en curso (borradores), cerrar una carta (sobre y sello), la caja con las cartas cerradas
+// Mis cartas: varias cartas en curso (borradores), cerrar una carta (sobre y sello), las cartas cerradas
 // y la regla de oro: una carta cerrada se imprime UNA sola vez; después de imprimir y confirmar que salió bien, se elimina.
 import { $, $$, uid } from './util.js';
 import * as DB from './db.js';
@@ -120,7 +120,7 @@ export function setupLetters(h) {
       const thumbs = [];
       for (let i = 0; i < pages; i++) { const c = document.createElement('canvas'); w.renderPageTo(c, i, 1.2); thumbs.push(c.toDataURL('image/jpeg', 0.8)); }
       const big = document.createElement('canvas'); w.renderPageTo(big, 0, 2); const fxImg = big.toDataURL('image/jpeg', 0.88);
-      const target = $('#bz-handle').getBoundingClientRect();
+      const target = chip.getBoundingClientRect();
       const fx = h.animOn() ? playSeal({ image: fxImg, style: styleOf(id), target, sound: h.sound }) : Promise.resolve();
       if (!h.animOn()) h.busy('Cerrando la carta…');
       // se congela la tinta de cada cara (PNG transparente a 300 ppp); el papel se guarda como datos
@@ -138,7 +138,7 @@ export function setupLetters(h) {
       letters.unshift(rec); renderBuzon();
       await fx;
       h.unbusy();
-      h.toast('Carta cerrada. Está en la caja de cartas: se imprime una sola vez.', 4200);
+      h.toast('Carta cerrada. La encontrás en Mis cartas: se imprime una sola vez.', 4200);
       pulseBuzon();
     } catch (err) {
       console.error(err); h.unbusy();
@@ -148,13 +148,13 @@ export function setupLetters(h) {
   }
 
   /* ------------------------------------------------------------------ */
-  /* La caja de cartas cerradas                                          */
+  /* Las cartas cerradas                                                 */
   /* ------------------------------------------------------------------ */
   let letters = [];
   const mem = new Map(); // respaldo si el navegador no deja guardar en el dispositivo
   async function saveLetter(rec) {
     mem.set(rec.id, rec);
-    try { await DB.putLetter(rec); } catch (e) { console.warn('Caja de cartas: no se pudo guardar en el dispositivo', e); }
+    try { await DB.putLetter(rec); } catch (e) { console.warn('Cartas cerradas: no se pudo guardar en el dispositivo', e); }
   }
   async function loadLetters() {
     try { letters = await DB.allLetters(); } catch { letters = []; }
@@ -162,16 +162,8 @@ export function setupLetters(h) {
     letters.sort((a, b) => b.ts - a.ts);
     renderBuzon();
   }
-  const box = $('#buzon'), handle = $('#bz-handle'), tray = $('#bz-tray');
-  let open = false, pinned = false, hover = false, closeT = 0;
-  const wantOpen = () => pinned || hover;
-  function setOpen(v) { if (v === open) return; open = v; box.classList.toggle('open', v); handle.setAttribute('aria-expanded', v); h.onBuzon?.(); }
-  const scheduleClose = () => { clearTimeout(closeT); closeT = setTimeout(() => { if (!wantOpen()) setOpen(false); }, 450); };
-  box.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'mouse') return; hover = true; clearTimeout(closeT); setOpen(true); });
-  box.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'mouse') return; hover = false; scheduleClose(); });
-  handle.addEventListener('click', () => { pinned = !pinned; box.classList.toggle('pinned', pinned); if (pinned) setOpen(true); else if (!wantOpen()) setOpen(false); });
-  tray.addEventListener('wheel', (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { tray.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
-  function pulseBuzon() { setOpen(true); box.classList.add('pulse'); setTimeout(() => { box.classList.remove('pulse'); if (!wantOpen()) setOpen(false); }, 2600); }
+  const tray = $('#bz-tray'), chip = $('#letter-chip');
+  function pulseBuzon() { chip.classList.add('pulse'); setTimeout(() => chip.classList.remove('pulse'), 2200); }
 
   // cada sobre tiene su propio papel y su propio lacre (siempre el mismo para la misma carta)
   const PAPERS = ['#f1e6cc', '#e4ecf7', '#f7e3ea', '#e1f0e5', '#ece5f8', '#f8ecd2'];
@@ -180,36 +172,21 @@ export function setupLetters(h) {
   function styleOf(id) { const x = hashOf(id); return { paper: PAPERS[x % PAPERS.length], wax: WAXES[(x >> 3) % WAXES.length] }; }
 
   function renderBuzon() {
-    $('#bz-count').textContent = letters.length ? String(letters.length) : '';
-    box.classList.toggle('vacia', !letters.length);
+    const cnt = $('#bz-count'); cnt.textContent = letters.length || ''; cnt.hidden = !letters.length;
+    chip.setAttribute('aria-label', `Carta que estás escribiendo. Abrir Mis cartas${letters.length ? `. ${plural(letters.length, 'carta cerrada', 'cartas cerradas')}` : ''}`);
     tray.innerHTML = '';
-    const n = letters.length;
-    const span = Math.min(196, 46 * Math.max(0, n - 1));
-    letters.forEach((rec, i) => {
-      const st = styleOf(rec.id);
+    if (!letters.length) { tray.append(el('li', 'empty muted', 'Todavía no cerraste ninguna carta.')); return; }
+    for (const rec of letters) {
+      const st = styleOf(rec.id), li = document.createElement('li');
       const b = el('button', 'sobre'); b.type = 'button'; b.dataset.id = rec.id;
-      const t = n === 1 ? 0.5 : i / (n - 1);
-      b.style.setProperty('--x', Math.round(118 - span / 2 + span * t));
-      b.style.setProperty('--r', ((t - 0.5) * 16).toFixed(1) + 'deg');
-      b.style.setProperty('--z', (-4 + i * 1.2).toFixed(1) + 'px');
-      b.style.setProperty('--i', String(i));
       b.style.setProperty('--paper', st.paper); b.style.setProperty('--wax', st.wax);
       b.classList.toggle('pend', rec.status === 'printing');
       b.setAttribute('aria-label', `${rec.title}, cerrada el ${fmtDate(rec.ts)}, ${plural(rec.sheets.length, 'hoja', 'hojas')}${rec.status === 'printing' ? '. Impresión sin confirmar' : ''}`);
-      b.append(el('i', 'sobre-flap'), el('i', 'sobre-seal'));
-      const lab = el('span', 'sobre-l'); lab.append(el('b', '', rec.title), el('small', '', `${fmtDate(rec.ts)} · ${plural(rec.sheets.length, 'hoja', 'hojas')}`));
-      b.append(lab);
-      b.addEventListener('click', () => openMail(rec));
-      tray.append(b);
-    });
+      b.append(el('b', '', rec.title), el('small', '', `${fmtDate(rec.ts)} · ${plural(rec.sheets.length, 'hoja', 'hojas')}${rec.status === 'printing' ? ' · sin confirmar' : ''}`));
+      b.addEventListener('click', () => { $('#versions').close(); openMail(rec); });
+      li.append(b); tray.append(li);
+    }
   }
-  // la caja se inclina un poco hacia donde está el cursor
-  box.addEventListener('pointermove', (e) => {
-    if (e.pointerType !== 'mouse') return;
-    const r = box.getBoundingClientRect();
-    box.style.setProperty('--px', (((e.clientX - r.left) / r.width) * 2 - 1).toFixed(2));
-  });
-  box.addEventListener('pointerleave', () => box.style.setProperty('--px', '0'));
 
   /* ---- una carta cerrada ---- */
   let curRec = null;
@@ -301,16 +278,14 @@ export function setupLetters(h) {
     }
     $('#sentdlg').showModal();
   }
-  $('#bz-sent').addEventListener('click', openSent);
+  $('#bz-sent').addEventListener('click', () => { $('#versions').close(); openSent(); });
 
   /* ------------------------------------------------------------------ */
   load(); updateChip(); loadLetters();
   return {
     start() { const d = cur(); S().seed = d.seed || S().seed; return d.text || ''; },
     saveActive, openDialog, activeId: () => activeId, startBlank,
-    isOpen: () => open,
-    toggleBuzon() { pinned = !pinned; box.classList.toggle('pinned', pinned); setOpen(pinned || wantOpen()); if (!pinned) scheduleClose(); },
-    closeBuzon() { pinned = false; hover = false; box.classList.remove('pinned'); setOpen(false); },
+    openSealed() { openDialog(); $('#sealed-sec')?.scrollIntoView({ block: 'nearest' }); },
     pendingCount: () => letters.filter((l) => l.status === 'printing').length,
   };
 }

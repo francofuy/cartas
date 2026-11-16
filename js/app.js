@@ -357,7 +357,7 @@ function setupInput() {
 let openPanel = null, noteOpen = false;
 function markDock() {
   $$('.dock-btn[data-panel]').forEach((b) => {
-    const on = b.dataset.panel === 'note' ? noteOpen : b.dataset.panel === 'cab' ? !!cajonApi?.isOpen() : b.dataset.panel === 'mail' ? !!lettersApi?.isOpen() : b.dataset.panel === openPanel;
+    const on = b.dataset.panel === 'note' ? noteOpen : b.dataset.panel === 'cab' ? !!cajonApi?.isOpen() : b.dataset.panel === openPanel;
     b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
   });
 }
@@ -392,8 +392,7 @@ function setNote(open) {
 }
 function togglePanel(name) {
   if (name === 'note') setNote(!noteOpen);
-  else if (name === 'cab') { if (isMobile()) { setLeft(null); setNote(false); lettersApi?.closeBuzon(); } cajonApi.toggle(); }
-  else if (name === 'mail') { if (isMobile()) { setLeft(null); setNote(false); cajonApi?.close(); } lettersApi.toggleBuzon(); }
+  else if (name === 'cab') { if (isMobile()) { setLeft(null); setNote(false); } cajonApi.toggle(); }
   else setLeft(openPanel === name ? null : name);
 }
 const closeDrawers = () => { setLeft(null); setNote(false); };
@@ -888,7 +887,6 @@ async function init() {
     S: () => S, saveSettings, writer: () => writer, LS, toast, ask, busy, unbusy, get printflow() { return printflow; }, sound, animOn, isMobile,
     paperBlob: async (id) => papersApi?.imageBlob(id),
     onOpenDialog: () => { lastDeletedVersion = null; renderVersions(); },
-    onBuzon: () => markDock(),
   });
   refsApi = setupRefs({
     S: () => S, saveSettings, writer: () => writer, lib, toast, ask, isMobile, LS,
@@ -924,7 +922,6 @@ async function init() {
     if (e.key !== 'Escape' || document.querySelector('dialog[open]')) return;
     if (refsApi?.peekOpen()) return; // la vista de cerca maneja su propio Esc
     if (cajonApi?.escape()) { $('.dock-btn[data-panel="cab"]')?.focus(); return; }
-    if (lettersApi?.isOpen()) { lettersApi.closeBuzon(); return; }
     if (openPanel) { const b = $(`.dock-btn[data-panel="${openPanel}"]`); setLeft(null); b?.focus(); }
     else if (noteOpen) { setNote(false); $('.dock-btn[data-panel="note"]')?.focus(); }
   });

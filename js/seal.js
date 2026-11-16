@@ -1,10 +1,10 @@
-// La animación de cerrar la carta: se dobla en tres, entra en un sobre, el sello de lacre la cierra y el sobre viaja a la caja de cartas.
+// La animación de cerrar la carta: se dobla en tres, entra en un sobre, el sello de lacre la cierra y el sobre viaja a «Mis cartas».
 // Se puede saltar con un toque, Esc o el botón «Saltar».
 
 const el = (cls, html) => { const e = document.createElement('div'); e.className = cls; if (html) e.innerHTML = html; return e; };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// opts: { image (dataURL de la primera cara), style { paper, wax }, target (rect de la caja), sound { fold(), seal() } }
+// opts: { image (dataURL de la primera cara), style { paper, wax }, target (rect del botón Mis cartas), sound { fold(), seal() } }
 export function playSeal(opts) {
   return new Promise((resolve) => {
     const W = Math.min(300, Math.round(window.innerWidth * 0.62)), Hh = Math.round(W * 1.414), T = Math.round(Hh / 3);
@@ -69,7 +69,7 @@ export function playSeal(opts) {
         await anim(seal, [{ opacity: 0, transform: 'translate(-50%, -50%) scale(2.2)' }, { opacity: 1, transform: 'translate(-50%, -50%) scale(.92)', offset: .7 }, { opacity: 1, transform: 'translate(-50%, -50%) scale(1)' }], { duration: 420, easing: 'cubic-bezier(.34,1.56,.64,1)' });
         await wait(450);
         if (skipped) return;
-        // viaja a la caja de cartas
+        // viaja a «Mis cartas»
         const r = opts.target, b = env.getBoundingClientRect();
         if (r) {
           const dx = r.left + r.width / 2 - (b.left + b.width / 2), dy = r.top + r.height / 2 - (b.top + b.height / 2);

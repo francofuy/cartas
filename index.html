@@ -56,26 +56,10 @@
   </div>
 </section>
 
-<!-- la caja de cartas cerradas: una caja en 3D; la tapa se abre al pasar el cursor y los sobres asoman -->
-<section id="buzon" class="caja vacia" aria-label="Caja de cartas cerradas">
-  <div class="caja-tools"><button class="btn sm" id="bz-sent" type="button">Enviadas</button></div>
-  <div class="caja-scene">
-    <div class="caja-shadow" aria-hidden="true"></div>
-    <div class="caja-3d">
-      <div class="cf cf-back" aria-hidden="true"></div><div class="cf cf-left" aria-hidden="true"></div><div class="cf cf-right" aria-hidden="true"></div><div class="cf cf-bottom" aria-hidden="true"></div>
-      <div class="caja-sobres" id="bz-tray" role="group" aria-label="Cartas cerradas"></div>
-      <button class="cf cf-front" id="bz-handle" type="button" aria-expanded="false" aria-label="Caja de cartas cerradas">
-        <span class="plate"><b>Cartas cerradas</b><span class="cnt" id="bz-count"></span></span><i class="cf-seal" aria-hidden="true"></i>
-      </button>
-      <div class="lid-hinge" aria-hidden="true"><div class="lid"><i class="lid-ring"></i></div></div>
-    </div>
-  </div>
-</section>
-
 <div id="app">
 
   <header class="top">
-    <button class="letter-chip g" id="letter-chip" type="button" title="Mis cartas: las que están en curso y las versiones de esta" aria-label="Carta que estás escribiendo. Abrir Mis cartas"><span class="ico" data-icon="letters"></span><span class="t">Carta sin título</span></button>
+    <button class="letter-chip g" id="letter-chip" type="button" title="Mis cartas: las que están en curso y las versiones de esta" aria-label="Carta que estás escribiendo. Abrir Mis cartas"><span class="ico" data-icon="letters"></span><span class="t">Carta sin título</span><span class="chip-n" id="bz-count" hidden></span></button>
     <nav class="seg g" id="seg" aria-label="Secciones">
       <i class="pill" aria-hidden="true"></i>
       <button class="tab" data-view="write" aria-pressed="true">Escribir</button>
@@ -100,7 +84,6 @@
         <button class="dock-btn" data-panel="paper" aria-label="Papel" title="Papel"><span data-icon="paper" class="ico"></span><span class="t">Papel</span></button>
         <button class="dock-btn" data-panel="hand" aria-label="Letra" title="Letra"><span data-icon="hand" class="ico"></span><span class="t">Letra</span></button>
         <span class="dock-sep" aria-hidden="true"></span>
-        <button class="dock-btn" data-panel="mail" aria-label="Caja de cartas cerradas" title="Caja de cartas cerradas"><span data-icon="mail" class="ico"></span><span class="t">Cerradas</span></button>
         <button class="dock-btn" data-panel="cab" aria-label="Archivero de cartas de referencia" title="Archivero de cartas de referencia"><span data-icon="cabinet" class="ico"></span><span class="t">Archivero</span></button>
         <button class="dock-btn" data-panel="note" aria-label="Referencia: nota o carta del archivero" title="Referencia: nota o carta del archivero"><span data-icon="note" class="ico"></span><span class="t">Referencia</span></button>
       </nav>
@@ -272,7 +255,7 @@
           <div class="zoom" role="group" aria-label="Vista de la hoja">
             <button class="bbtn" id="btn-view" type="button" aria-label="Cambiar la vista de la hoja. Ahora: ancho"><span class="ico" data-icon="zoom"></span><span class="lab">Ancho</span></button>
           </div>
-          <button class="bbtn seal" id="btn-seal" type="button" title="Cerrar la carta: se dobla, se sella y se guarda en la caja de cartas" aria-label="Cerrar la carta: se dobla, se sella y se guarda en la caja de cartas"><span class="ico" data-icon="seal"></span><span class="lab">Cerrar carta</span></button>
+          <button class="bbtn seal" id="btn-seal" type="button" title="Cerrar la carta: se dobla, se sella y se guarda en Cartas cerradas" aria-label="Cerrar la carta: se dobla, se sella y se guarda en Cartas cerradas"><span class="ico" data-icon="seal"></span><span class="lab">Cerrar carta</span></button>
         </div>
       </div>
 
@@ -337,7 +320,7 @@
 
         <section class="card gp" aria-labelledby="h-backup">
           <div class="card-head"><span class="num" aria-hidden="true">4</span><h2 id="h-backup">Copia de seguridad</h2></div>
-          <p class="muted">Un solo archivo con todo lo tuyo: tu letra, las cartas del archivero, las imágenes y hojas guardadas, las versiones y la nota. Sirve para pasar todo a otro dispositivo o para tener un respaldo. No incluye los ajustes de este dispositivo, las claves de los buscadores ni las cartas cerradas de la caja (esas se imprimen una sola vez y no se pueden copiar).</p>
+          <p class="muted">Un solo archivo con todo lo tuyo: tu letra, las cartas del archivero, las imágenes y hojas guardadas, las versiones y la nota. Sirve para pasar todo a otro dispositivo o para tener un respaldo. No incluye los ajustes de este dispositivo, las claves de los buscadores ni las cartas cerradas (esas se imprimen una sola vez y no se pueden copiar).</p>
           <p class="hint" id="backup-info"></p>
           <div class="row wrap">
             <button class="btn primary" id="backup-export">Exportar todo</button>
@@ -389,6 +372,11 @@
       <p class="muted">Podés tener varias a la vez; se guardan solas. Para terminar una, usá «Cerrar carta».</p>
       <ul class="ver-list" id="draft-list"></ul>
     </section>
+    <section class="dsec" id="sealed-sec">
+      <div class="row between"><h4>Cartas cerradas</h4><button class="btn sm" id="bz-sent" type="button">Enviadas</button></div>
+      <p class="muted">Ya están dobladas y selladas. Cada una se imprime una sola vez y después se elimina.</p>
+      <ul class="sealed-list" id="bz-tray"></ul>
+    </section>
     <section class="dsec">
       <h4>Versiones de la carta actual</h4>
       <p class="muted">Copias para volver atrás. Para tener una carta como modelo para copiar, sumala al archivero.</p>
@@ -405,12 +393,12 @@
     <h3 id="seal-title">Doblar y cerrar la carta</h3>
     <p class="muted" id="seal-info"></p>
     <label class="okrow" id="seal-vers-row"><input type="checkbox" id="seal-vers" checked><span>Borrar también sus <span id="seal-vers-n">versiones guardadas</span></span></label>
-    <p class="hint">Una carta cerrada ya no se puede editar. Se guarda en la caja de cartas y se imprime <b>una sola vez</b>: después de imprimirla y confirmar que salió bien, se elimina.</p>
+    <p class="hint">Una carta cerrada ya no se puede editar. Se guarda en Cartas cerradas y se imprime <b>una sola vez</b>: después de imprimirla y confirmar que salió bien, se elimina.</p>
     <div class="row end"><button class="btn" value="cancel">Todavía no</button><button class="btn primary" id="seal-go" value="go">Doblar y cerrar</button></div>
   </form>
 </dialog>
 
-<!-- una carta de la caja -->
+<!-- una carta cerrada -->
 <dialog id="maildlg" class="gp" aria-labelledby="mail-title">
   <form method="dialog" class="dlg">
     <h3 id="mail-title"></h3>
