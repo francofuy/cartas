@@ -39,7 +39,7 @@ Idea: cámara fija con la lapicera siempre en el mismo punto de la pantalla; la 
 ### Valores elegidos para el modo foco con hoja de máquina de escribir
 (los que se ven bien en el prototipo; usarlos como base si se lleva a la app)
 - Radio del rodillo 38 mm · Cuánto se enrolla 210° · Rigidez del papel 55 (muy flexible)
-- Altura de la cámara −10° · Distancia de la cámara 90 % · Giro al desplazarse 14 %
-- Distancia de la luz al papel 20 mm · Altura de la luz 160 (por encima) · Intensidad 90 % · Resplandor 10 %
-- Velocidad 14 letras/s · Rodillo oculto
-- Oscuridad del fondo: 65 % (nueva; oscurece lo que no ilumina la luz)
+- Altura de la cámara −10° · Distancia de la cámara 61 % · Giro al desplazarse 14 %
+- Distancia de la luz al papel 105 mm · Intensidad 170 % (en la V de 150 %) · Oscuridad del fondo 95 % · Resplandor 10 %
+- Altura de la luz: por encima · Velocidad 14 letras/s · Rodillo oculto
+- Luz: se pidió una forma de V más marcada. Hecho en un editor de luz aparte (V con vértice, eje, apertura, asimetría, borde, curva de brazos, punta redondeada, alcance, núcleo; color por temperatura; halo; rebote; resplandor; bordes; grano; parpadeo; guías arrastrables; puntos de partida; copiar/pegar valores). Los valores finales que elija se copian desde ahí.
