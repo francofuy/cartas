@@ -1,4 +1,4 @@
-// Mis cartas: varias cartas en curso (borradores), cerrar una carta (sobre y sello), el Buzón con las cartas cerradas
+// Mis cartas: varias cartas en curso (borradores), cerrar una carta (sobre y sello), la caja con las cartas cerradas
 // y la regla de oro: una carta cerrada se imprime UNA sola vez; después de imprimir y confirmar que salió bien, se elimina.
 import { $, $$, uid } from './util.js';
 import * as DB from './db.js';
@@ -103,7 +103,6 @@ export function setupLetters(h) {
     saveActive();
     const L = w.layout, nS = L.sheets.length, nB = L.sheets.filter((x) => x.back != null).length;
     $('#seal-info').textContent = `«${cur().title}»: ${plural(nS, 'hoja', 'hojas')}${nB ? `, ${nB} con dorso` : ''}.`;
-    $('#seal-to').value = cur().to || '';
     const vc = versionsOf(activeId).length;
     $('#seal-vers-row').hidden = vc === 0;
     $('#seal-vers').checked = true;
@@ -111,9 +110,9 @@ export function setupLetters(h) {
     $('#sealdlg').showModal();
   }
   $('#btn-seal').addEventListener('click', openSealDialog);
-  $('#seal-go').addEventListener('click', (e) => { e.preventDefault(); const to = $('#seal-to').value.trim(), dv = $('#seal-vers').checked; $('#sealdlg').close(); doSeal(to, dv); });
+  $('#seal-go').addEventListener('click', (e) => { e.preventDefault(); const dv = $('#seal-vers').checked; $('#sealdlg').close(); doSeal(dv); });
 
-  async function doSeal(to, delVersions) {
+  async function doSeal(delVersions) {
     const w = W(), id = uid(), L = w.layout, pages = L.pages, d = cur(), sealedDraftId = d.id;
     const paper = JSON.parse(JSON.stringify(S().paper));
     try {
@@ -122,14 +121,14 @@ export function setupLetters(h) {
       for (let i = 0; i < pages; i++) { const c = document.createElement('canvas'); w.renderPageTo(c, i, 1.2); thumbs.push(c.toDataURL('image/jpeg', 0.8)); }
       const big = document.createElement('canvas'); w.renderPageTo(big, 0, 2); const fxImg = big.toDataURL('image/jpeg', 0.88);
       const target = $('#bz-handle').getBoundingClientRect();
-      const fx = h.animOn() ? playSeal({ image: fxImg, to, target, sound: h.sound }) : Promise.resolve();
+      const fx = h.animOn() ? playSeal({ image: fxImg, style: styleOf(id), target, sound: h.sound }) : Promise.resolve();
       if (!h.animOn()) h.busy('Cerrando la carta…');
       // se congela la tinta de cada cara (PNG transparente a 300 ppp); el papel se guarda como datos
       const ink = [];
       for (let i = 0; i < pages; i++) { const c = document.createElement('canvas'); w.renderInkTo(c, i, PRINT_DPI_PPM); ink.push(await toBlob(c, 'image/png')); c.width = c.height = 0; await new Promise((r) => setTimeout(r)); }
       let paperImage = null;
       if (paper.imageId) paperImage = await h.paperBlob(paper.imageId);
-      const rec = { id, title: d.title, to, ts: Date.now(), status: 'sealed', pages, faces: L.faces.map((f) => ({ ...f })), sheets: L.sheets.map((s) => ({ ...s })), ink, paper, paperImage, thumbs };
+      const rec = { id, title: d.title, ts: Date.now(), status: 'sealed', pages, faces: L.faces.map((f) => ({ ...f })), sheets: L.sheets.map((s) => ({ ...s })), ink, paper, paperImage, thumbs };
       await saveLetter(rec);
       // la carta sale del editor; si pidió borrar sus versiones, también
       if (delVersions) LS.set('pyl.versions', LS.get('pyl.versions', []).filter((v) => v.draftId !== sealedDraftId));
@@ -139,7 +138,7 @@ export function setupLetters(h) {
       letters.unshift(rec); renderBuzon();
       await fx;
       h.unbusy();
-      h.toast('Carta cerrada. Está en el Buzón: se imprime una sola vez.', 4200);
+      h.toast('Carta cerrada. Está en la caja de cartas: se imprime una sola vez.', 4200);
       pulseBuzon();
     } catch (err) {
       console.error(err); h.unbusy();
@@ -149,13 +148,13 @@ export function setupLetters(h) {
   }
 
   /* ------------------------------------------------------------------ */
-  /* El Buzón                                                            */
+  /* La caja de cartas cerradas                                          */
   /* ------------------------------------------------------------------ */
   let letters = [];
   const mem = new Map(); // respaldo si el navegador no deja guardar en el dispositivo
   async function saveLetter(rec) {
     mem.set(rec.id, rec);
-    try { await DB.putLetter(rec); } catch (e) { console.warn('Buzón: no se pudo guardar en el dispositivo', e); }
+    try { await DB.putLetter(rec); } catch (e) { console.warn('Caja de cartas: no se pudo guardar en el dispositivo', e); }
   }
   async function loadLetters() {
     try { letters = await DB.allLetters(); } catch { letters = []; }
@@ -174,27 +173,49 @@ export function setupLetters(h) {
   tray.addEventListener('wheel', (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { tray.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
   function pulseBuzon() { setOpen(true); box.classList.add('pulse'); setTimeout(() => { box.classList.remove('pulse'); if (!wantOpen()) setOpen(false); }, 2600); }
 
+  // cada sobre tiene su propio papel y su propio lacre (siempre el mismo para la misma carta)
+  const PAPERS = ['#f1e6cc', '#e4ecf7', '#f7e3ea', '#e1f0e5', '#ece5f8', '#f8ecd2'];
+  const WAXES = ['#a3202b', '#1f4fd8', '#b8892a', '#2b7a56', '#6a3bb0', '#c4562a'];
+  const hashOf = (id) => { let x = 0; for (const ch of String(id)) x = (x * 31 + ch.charCodeAt(0)) >>> 0; return x; };
+  function styleOf(id) { const x = hashOf(id); return { paper: PAPERS[x % PAPERS.length], wax: WAXES[(x >> 3) % WAXES.length] }; }
+
   function renderBuzon() {
     $('#bz-count').textContent = letters.length ? String(letters.length) : '';
+    box.classList.toggle('vacia', !letters.length);
     tray.innerHTML = '';
-    if (!letters.length) { tray.append(el('p', 'cj-empty muted', 'No hay cartas cerradas. Cuando cierres una, queda acá hasta que la imprimas.')); return; }
-    for (const rec of letters) {
-      const b = el('button', 'env'); b.type = 'button'; b.dataset.id = rec.id;
+    const n = letters.length;
+    const span = Math.min(196, 46 * Math.max(0, n - 1));
+    letters.forEach((rec, i) => {
+      const st = styleOf(rec.id);
+      const b = el('button', 'sobre'); b.type = 'button'; b.dataset.id = rec.id;
+      const t = n === 1 ? 0.5 : i / (n - 1);
+      b.style.setProperty('--x', Math.round(118 - span / 2 + span * t));
+      b.style.setProperty('--r', ((t - 0.5) * 16).toFixed(1) + 'deg');
+      b.style.setProperty('--z', (-4 + i * 1.2).toFixed(1) + 'px');
+      b.style.setProperty('--i', String(i));
+      b.style.setProperty('--paper', st.paper); b.style.setProperty('--wax', st.wax);
       b.classList.toggle('pend', rec.status === 'printing');
-      b.setAttribute('aria-label', `${rec.to ? 'Carta para ' + rec.to : rec.title}, cerrada el ${fmtDate(rec.ts)}, ${plural(rec.sheets.length, 'hoja', 'hojas')}${rec.status === 'printing' ? '. Impresión sin confirmar' : ''}`);
-      b.append(el('i', 'env-flap'), el('i', 'env-seal'));
-      const lab = el('span', 'env-l'); lab.append(el('b', '', rec.to ? 'Para ' + rec.to : rec.title), el('small', '', `${fmtDate(rec.ts)} · ${plural(rec.sheets.length, 'hoja', 'hojas')}`));
+      b.setAttribute('aria-label', `${rec.title}, cerrada el ${fmtDate(rec.ts)}, ${plural(rec.sheets.length, 'hoja', 'hojas')}${rec.status === 'printing' ? '. Impresión sin confirmar' : ''}`);
+      b.append(el('i', 'sobre-flap'), el('i', 'sobre-seal'));
+      const lab = el('span', 'sobre-l'); lab.append(el('b', '', rec.title), el('small', '', `${fmtDate(rec.ts)} · ${plural(rec.sheets.length, 'hoja', 'hojas')}`));
       b.append(lab);
       b.addEventListener('click', () => openMail(rec));
       tray.append(b);
-    }
+    });
   }
+  // la caja se inclina un poco hacia donde está el cursor
+  box.addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    const r = box.getBoundingClientRect();
+    box.style.setProperty('--px', (((e.clientX - r.left) / r.width) * 2 - 1).toFixed(2));
+  });
+  box.addEventListener('pointerleave', () => box.style.setProperty('--px', '0'));
 
   /* ---- una carta cerrada ---- */
   let curRec = null;
   function openMail(rec) {
     curRec = rec;
-    $('#mail-title').textContent = rec.to ? `Carta para ${rec.to}` : rec.title;
+    $('#mail-title').textContent = rec.title;
     $('#mail-meta').textContent = `Cerrada el ${fmtDate(rec.ts)} · ${plural(rec.sheets.length, 'hoja', 'hojas')}${rec.sheets.some((s) => s.back != null) ? ' (con dorso)' : ''}`;
     const th = $('#mail-thumbs'); th.innerHTML = '';
     rec.thumbs.forEach((u, i) => { const im = new Image(); im.src = u; im.alt = `Cara ${i + 1} de la carta`; th.append(im); });
@@ -208,7 +229,7 @@ export function setupLetters(h) {
   $('#mail-confirm').addEventListener('click', () => { $('#maildlg').close(); openConfirm(curRec); });
   $('#mail-del').addEventListener('click', async () => {
     const rec = curRec; $('#maildlg').close();
-    if (!(await h.ask('¿Descartar esta carta sin imprimirla?', `«${rec.to ? 'Para ' + rec.to : rec.title}» se elimina y no se puede recuperar.`, 'Descartar carta', true))) { openMail(rec); return; }
+    if (!(await h.ask('¿Descartar esta carta sin imprimirla?', `«${rec.title}» se elimina y no se puede recuperar.`, 'Descartar carta', true))) { openMail(rec); return; }
     await removeLetter(rec, false);
     h.toast('Carta descartada.', 2600);
   });
@@ -266,7 +287,7 @@ export function setupLetters(h) {
     try { await DB.deleteLetter(rec.id); } catch { /* nada */ }
     mem.delete(rec.id); letters = letters.filter((l) => l.id !== rec.id); renderBuzon();
     const sent = LS.get('pyl.sent', []);
-    sent.unshift({ id: rec.id, title: rec.title, to: rec.to, ts: rec.ts, at: Date.now(), sheets: rec.sheets.length, printed });
+    sent.unshift({ id: rec.id, title: rec.title, ts: rec.ts, at: Date.now(), sheets: rec.sheets.length, printed });
     LS.set('pyl.sent', sent.slice(0, 200));
   }
   function openSent() {
@@ -275,7 +296,7 @@ export function setupLetters(h) {
     if (!list.length) ul.append(el('li', 'muted', 'Todavía no hay cartas enviadas.'));
     for (const s of list) {
       const li = el('li'); const t = el('div', 't');
-      t.append(el('b', '', s.to ? 'Para ' + s.to : s.title), el('small', '', `${s.printed ? 'Impresa' : 'Descartada sin imprimir'} el ${fmtDate(s.at)} · ${plural(s.sheets, 'hoja', 'hojas')}`));
+      t.append(el('b', '', s.title), el('small', '', `${s.printed ? 'Impresa' : 'Descartada sin imprimir'} el ${fmtDate(s.at)} · ${plural(s.sheets, 'hoja', 'hojas')}`));
       li.append(t); ul.append(li);
     }
     $('#sentdlg').showModal();
