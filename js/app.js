@@ -12,6 +12,7 @@ import { buildChips, buildSwatches } from './controls.js';
 import { setupPapers } from './papers.js';
 import { setupRefs } from './refs.js';
 import { setupCajon } from './cajon.js';
+import { setupCurl } from './curl.js';
 import { exportBackup, importBackup, describe as describeBackup } from './backup.js';
 
 /* ------------------------------------------------------------------ */
@@ -240,6 +241,7 @@ function fit() {
   const base = isMobile() ? availW : fitMode === 'page' ? Math.min(availW, (availH * 210) / 297) : Math.min(availW, 760);
   const w = Math.round(base * zoom);
   if (Math.abs(w - writer.cssW) > 1) writer.resize(w);
+  curlApi?.place();
 }
 
 function faceLabel(info) {
@@ -249,6 +251,7 @@ function faceLabel(info) {
   return { long: `Hoja ${f.sheet + 1} de ${n}${side ? ' · ' + side : ''}`, short: `${f.sheet + 1}/${n}${side ? ' ' + side : ''}`, f, hasBack };
 }
 function updatePager(info) {
+  curlApi?.place();
   const lb = faceLabel(info);
   $('#pg-label').innerHTML = `<span class="long">${lb.long}</span><span class="short" aria-hidden="true">${lb.short}</span>`;
   const flip = $('#btn-flip');
@@ -376,7 +379,7 @@ function togglePanel(name) {
   else setLeft(openPanel === name ? null : name);
 }
 const closeDrawers = () => { setLeft(null); setNote(false); };
-let refsApi = null, cajonApi = null, papersApi = null;
+let refsApi = null, cajonApi = null, papersApi = null, curlApi = null;
 
 /* ------------------------------------------------------------------ */
 /* Hojas: dar vuelta, tomar otra, cambiar de cara                      */
@@ -415,6 +418,16 @@ function insertMarker(ch, at) {
   writer.edit(at, 0, ch, at + 1);
   writer._syncCap(); persistDraft();
   if (!isMobile()) $('#cap').focus({ preventScroll: true });
+}
+// a qué cara lleva el gesto de la esquina: derecha = siguiente (o el dorso, si todavía no existe), izquierda = anterior
+function turnTargets() {
+  if (!writer || !writer.layout) return { fwd: null, back: null };
+  const L = writer.layout, cur = writer.page;
+  const back = cur > 0 ? { idx: cur - 1, apply: () => writer.setPage(cur - 1) } : null;
+  let fwd = null;
+  if (cur < L.pages - 1) fwd = { idx: cur + 1, apply: () => writer.setPage(cur + 1) };
+  else if (L.faces[cur].side === 'front') fwd = { idx: L.pages, apply: () => insertMarker('\v', faceEnd(cur)) };
+  return { fwd, back };
 }
 function setupSheetOps() {
   $('#btn-flip').addEventListener('click', () => {
@@ -945,6 +958,7 @@ async function init() {
   $('#pg-prev').addEventListener('click', () => goPage(writer.page - 1));
   $('#pg-next').addEventListener('click', () => goPage(writer.page + 1));
   setupSheetOps();
+  curlApi = setupCurl({ writer: () => writer, targets: turnTargets, animOn, toast, onTurned: () => $('#scroller').scrollTo({ top: 0 }) });
   // un solo botón de vista: ancho completo → hoja entera → de cerca (en celular, sin «hoja entera»)
   const VIEWS = [{ fit: 'width', zoom: 1, label: 'Ancho' }, { fit: 'page', zoom: 1, label: 'Hoja entera' }, { fit: 'width', zoom: 1.5, label: 'De cerca' }];
   let viewIdx = clamp(LS.get('pyl.viewIdx', 0), 0, VIEWS.length - 1);

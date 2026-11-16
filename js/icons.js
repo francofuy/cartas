@@ -23,6 +23,8 @@ const P = {
   search: '<circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/>',
   pin: '<path d="M9 4h6l-1 5 3 3v1.5H7V12l3-3zM12 13.5V20"/>',
   zoom: '<circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2M11 8.5v5M8.5 11h5"/>',
+  turnR: '<path d="M6 4h12v9l-6 7H6zM12 20v-4.5a2.5 2.5 0 0 1 2.5-2.5H18"/>',
+  turnL: '<path d="M18 4H6v9l6 7h6zM12 20v-4.5a2.5 2.5 0 0 0-2.5-2.5H6"/>',
   cabinet: '<path d="M4 4h16v16H4zM4 12h16M10 8h4M10 16h4"/>',
 };
 export function icon(name, size) {

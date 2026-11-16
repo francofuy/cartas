@@ -13,7 +13,7 @@ como app en PC y celular y funciona sin conexión. Tu letra y tus cartas se guar
 2. **Escribir** → tipeá y la hoja se va "escribiendo" con tu letra (trazo animado con ritmo humano).
    La barra de la izquierda abre cada ajuste: lapicera, escritura, papel y letra.
 3. **Hojas con dorso** → «Dar vuelta» gira la hoja y seguís en el dorso; «Hoja nueva» toma otra hoja del montón
-   (sin dorso). Cuando una hoja se llena, la carta sigue en el dorso o en otra hoja, a tu elección.
+   (sin dorso). También podés dar vuelta la hoja con el gesto: mantené apretada la esquina inferior (derecha = siguiente, izquierda = anterior) y arrastrá; la hoja se despega como la de un cuaderno. Cuando una hoja se llena, la carta sigue en el dorso o en otra hoja, a tu elección.
 4. **Archivero** → un cajón en una esquina que se abre al pasar el cursor y muestra las cartas de lomo (por carpeta). Al hacer clic en una se muestra de frente para elegirla y arrastrarla a la referencia; también se buscan, se leen, se editan y se exportan o importan.
    La referencia se ve al costado, en una ventana flotante o «fantasma» sobre la hoja, con letra legible o con tu letra.
 5. **Papel** → galería de modelos y de tus hojas guardadas; editor de líneas, margen, color, textura, imagen de fondo y decoraciones; y buscador de imágenes en internet (Openverse y Wikimedia sin clave; Unsplash, Pexels y Pixabay con una clave gratuita que guardás solo en tu dispositivo).
@@ -30,6 +30,7 @@ js/theme.js         paletas, vidrio, fondo de puntos que reaccionan
 js/writer.js        texto, ritmo de escritura, dibujo de la hoja y modo fantasma
 js/layout.js        renglones, caras (frente/dorso), hojas, imperfecciones deterministas
 js/refs.js          datos de las cartas y referencia (costado / flotante / fantasma); js/cajon.js: el cajón de la esquina
+js/curl.js          gesto de la esquina para dar vuelta la hoja
 js/glyphs.js        biblioteca de letras, lapiceras (sprites) y animación de trazo
 js/skeleton.js      esqueleto de cada letra -> orden en que se dibuja
 js/capture.js       foto -> homografía -> letras sueltas (solo tinta)
