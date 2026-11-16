@@ -42,17 +42,17 @@
   </div>
   <div class="cj-box">
     <button class="cj-handle" id="cj-handle" type="button" aria-expanded="false" aria-controls="cj-body">
-      <b>Cartas</b><span class="cnt" id="cab-count"></span>
+      <b>Archivero</b><span class="cnt" id="cab-count"></span>
     </button>
     <div class="cj-body" id="cj-body">
       <div class="cj-tools">
         <label class="cab-search"><span class="sr-only">Buscar en las cartas</span><span data-icon="search" class="ico" aria-hidden="true"></span><input type="search" id="cab-q" placeholder="Buscar…" autocomplete="off"></label>
-        <button class="btn sm primary" id="cab-add">Nueva carta</button>
+        <button class="btn sm primary" id="cab-add">Sumar carta</button>
         <button class="icon-btn sm" id="cab-export" aria-label="Exportar el archivero" title="Exportar el archivero" data-icon="download"></button>
-        <label class="icon-btn sm file" title="Importar un archivero" aria-label="Importar un archivero"><span data-icon="upload" class="ico"></span><input type="file" id="cab-import" accept=".gz,.json,application/gzip,application/octet-stream" hidden></label>
+        <label class="icon-btn sm file" title="Importar un archivero"><span class="sr-only">Importar un archivero</span><span data-icon="upload" class="ico" aria-hidden="true"></span><input type="file" id="cab-import" accept=".gz,.json,application/gzip,application/octet-stream" hidden></label>
       </div>
       <p class="cj-hover muted" id="cj-hover" aria-hidden="true"></p>
-      <div class="cj-tray" id="cabinet" role="list" aria-label="Cartas guardadas"></div>
+      <div class="cj-tray" id="cabinet" role="group" aria-label="Cartas guardadas"></div>
     </div>
   </div>
 </section>
@@ -67,7 +67,7 @@
       <button class="tab" data-view="hand" aria-pressed="false">Mi letra</button>
     </nav>
     <div class="actions">
-      <button class="round g" id="btn-versions" title="Versiones guardadas" aria-label="Versiones guardadas" data-icon="history"></button>
+      <button class="round g wide" id="btn-versions" title="Versiones guardadas de tu carta" aria-label="Versiones guardadas de tu carta"><span class="ico" data-icon="history"></span><span class="lab">Versiones</span></button>
       <button class="btn primary" id="btn-print">
         <span data-icon="printer" class="ico"></span>
         <span class="lab">Imprimir</span>
@@ -86,8 +86,8 @@
         <button class="dock-btn" data-panel="paper" aria-label="Papel" title="Papel"><span data-icon="paper" class="ico"></span><span class="t">Papel</span></button>
         <button class="dock-btn" data-panel="hand" aria-label="Letra" title="Letra"><span data-icon="hand" class="ico"></span><span class="t">Letra</span></button>
         <span class="dock-sep" aria-hidden="true"></span>
-        <button class="dock-btn" data-panel="cab" aria-label="Archivero de cartas" title="Archivero de cartas"><span data-icon="cabinet" class="ico"></span><span class="t">Cartas</span></button>
-        <button class="dock-btn" data-panel="note" aria-label="Nota o carta de referencia" title="Nota o carta de referencia"><span data-icon="note" class="ico"></span><span class="t">Nota</span></button>
+        <button class="dock-btn" data-panel="cab" aria-label="Archivero de cartas de referencia" title="Archivero de cartas de referencia"><span data-icon="cabinet" class="ico"></span><span class="t">Archivero</span></button>
+        <button class="dock-btn" data-panel="note" aria-label="Referencia: nota o carta del archivero" title="Referencia: nota o carta del archivero"><span data-icon="note" class="ico"></span><span class="t">Referencia</span></button>
       </nav>
 
       <!-- ventana de ajustes (una sección a la vez) -->
@@ -116,9 +116,6 @@
           <h3 class="sub">Referencia</h3>
           <div class="field"><span class="lbl" id="lbl-rmode">Dónde se ve</span>
             <div class="chips" id="refmode-chips" role="group" aria-labelledby="lbl-rmode"></div>
-          </div>
-          <div class="field"><span class="lbl" id="lbl-rfont">Con qué letra</span>
-            <div class="chips" id="reffont-chips" role="group" aria-labelledby="lbl-rfont"></div>
           </div>
           <label class="field range"><span class="lbl">Intensidad del fantasma</span><input type="range" data-s="ghostAlpha" min="0.1" max="0.6" step="0.02"></label>
         </section>
@@ -151,7 +148,7 @@
             </div>
             <label class="field range"><span class="lbl">Textura</span><input type="range" data-s="paper.grain" min="0" max="1" step="0.05"></label>
 
-            <h3 class="sub">Líneas</h3>
+            <details class="grp" open><summary>Líneas</summary>
             <div class="field"><span class="lbl" id="lbl-line">Color</span>
               <div class="swatches" id="line-swatches" role="group" aria-labelledby="lbl-line"></div>
             </div>
@@ -159,14 +156,16 @@
             <label class="field range"><span class="lbl">Grosor</span><input type="range" data-s="paper.lineWidth" min="0.08" max="0.5" step="0.01"></label>
             <label class="field range"><span class="lbl">Intensidad</span><input type="range" data-s="paper.lineOpacity" min="0.1" max="1" step="0.02"></label>
 
-            <h3 class="sub">Margen</h3>
+            </details>
+            <details class="grp"><summary>Margen</summary>
             <label class="field toggle"><span class="lbl">Mostrar margen</span><input type="checkbox" data-s="paper.margin"></label>
             <label class="field range"><span class="lbl">Posición</span><input type="range" data-s="paper.marginX" min="16" max="50" step="1"></label>
             <div class="field"><span class="lbl" id="lbl-mcol">Color del margen</span>
               <div class="swatches" id="margin-swatches" role="group" aria-labelledby="lbl-mcol"></div>
             </div>
 
-            <h3 class="sub">Imagen de fondo</h3>
+            </details>
+            <details class="grp"><summary>Imagen de fondo</summary>
             <div class="imgrow">
               <div class="imgthumb" id="img-thumb" aria-live="polite"><span class="muted">Sin imagen</span></div>
               <div class="imgbtns">
@@ -179,16 +178,20 @@
             <label class="field range"><span class="lbl">Intensidad de la imagen</span><input type="range" data-s="paper.imageOpacity" min="0.1" max="1" step="0.02"></label>
             <div class="field" id="img-recent-box" hidden><span class="lbl">Imágenes que ya usaste</span><div class="recent" id="img-recent"></div></div>
 
-            <h3 class="sub">Decoraciones</h3>
+            </details>
+            <details class="grp"><summary>Decoraciones</summary>
             <div class="chips" id="deco-chips" role="group" aria-label="Decoraciones"></div>
             <div class="field"><span class="lbl" id="lbl-dcol">Color de las decoraciones</span>
               <div class="swatches" id="deco-swatches" role="group" aria-labelledby="lbl-dcol"></div>
             </div>
 
-            <h3 class="sub">Hojas con dorso</h3>
+            </details>
+            <details class="grp"><summary>Hojas con dorso</summary>
             <div class="field"><span class="lbl" id="lbl-over">Cuando se llena la hoja, la carta sigue…</span>
               <div class="chips" id="overflow-chips" role="group" aria-labelledby="lbl-over"></div>
             </div>
+            </details>
+            <button type="button" class="link-btn" data-reset="paper">Restablecer papel</button>
           </div>
 
           <div class="ptab" id="pp-search" role="tabpanel" aria-labelledby="ptab-search" data-ptab="search" hidden>
@@ -254,8 +257,8 @@
             <button class="icon-btn sm wide" id="z-fit" aria-label="Ver la hoja entera">Hoja entera</button>
             <button class="icon-btn sm" id="z-in" aria-label="Acercar" data-icon="plus"></button>
           </div>
-          <button class="hold" id="btn-new" type="button" title="Mantené apretado para empezar una carta nueva" aria-label="Nueva carta: mantené apretado para empezar de cero">
-            <i aria-hidden="true"></i><span class="hl">Mantené: nueva carta</span><span class="hs" aria-hidden="true">Nueva</span>
+          <button class="hold" id="btn-new" type="button" title="Mantené apretado para empezar de cero" aria-label="Empezar de cero: mantené apretado para dejar la hoja en blanco">
+            <i aria-hidden="true"></i><span class="hl">Mantené: empezar de cero</span><span class="hs" aria-hidden="true">De cero</span>
           </button>
         </div>
       </div>
@@ -264,7 +267,7 @@
       <aside id="note" class="note gp" aria-label="Referencia">
         <div id="refc" class="refc">
           <div class="note-head">
-            <h2 id="ref-title">Nota de referencia</h2>
+            <h2 id="ref-title">Referencia</h2>
             <div class="note-tools">
               <button class="icon-btn sm" id="ref-pin" type="button" aria-pressed="false" aria-label="Fijar al costado: la hoja se corre y no queda tapada" title="Fijar: la hoja se corre para que no la tape" data-icon="pin"></button>
               <button class="icon-btn sm wide" id="ref-font" hidden aria-label="Mostrar con mi letra" title="Cambiar la letra de la referencia">Mi letra</button>

@@ -56,7 +56,7 @@ export function setupCajon(h, R) {
   }
 
   function spine(r, i, needle) {
-    const b = el('button', 'spine'); b.type = 'button'; b.dataset.id = r.id; b.setAttribute('role', 'listitem');
+    const b = el('button', 'spine'); b.type = 'button'; b.dataset.id = r.id;
     b.style.setProperty('--c', r.color || COLORS[0][1]);
     b.style.setProperty('--h', 50 + ((r.id.charCodeAt(0) + i * 7) % 4) * 2 + 'px');
     b.setAttribute('aria-label', `${r.title}. Carta del cajón ${folderOf(r)}. Mostrar de frente`);
@@ -168,6 +168,7 @@ export function setupCajon(h, R) {
     close() { pinned = false; hover = false; searching = false; box.classList.remove('pinned'); setFeat(null); setOpen(false); },
     // Esc: primero guarda la carta de frente, después cierra el cajón. Devuelve true si hizo algo.
     escape() {
+      if (document.activeElement === $('#cab-q')) { $('#cab-q').blur(); if (!featId) return true; }
       if (featId) { setFeat(null); return true; }
       if (open) { this.close(); return true; }
       return false;

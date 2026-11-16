@@ -163,7 +163,7 @@ function syncControls() {
     if (el._out) el._out.textContent = (FORMAT[el.dataset.s] || String)(parseFloat(el.value));
     if (el.type === 'range') paintRange(el);
   });
-  ['#inst-chips', '#overflow-chips', '#refmode-chips', '#reffont-chips', '#source-chips', '#ink-swatches'].forEach((id) => $(id)._refresh?.());
+  ['#inst-chips', '#overflow-chips', '#refmode-chips', '#source-chips', '#ink-swatches'].forEach((id) => $(id)._refresh?.());
   papersApi?.sync();
   ['#paper-swatches', '#line-swatches', '#margin-swatches', '#deco-swatches'].forEach((id) => $(id)?._refresh?.());
 }
@@ -173,6 +173,10 @@ function setupResets() {
     if (b.dataset.reset === 'pen') {
       const d = INSTRUMENTS[S.instrument];
       Object.assign(S, { thickness: d.thickness, pressure: d.pressure, color: d.color, colorCustom: false });
+    } else if (b.dataset.reset === 'paper') {
+      S.paper = JSON.parse(JSON.stringify(DEFAULTS.paper));
+      settingChanged('paper.type'); syncControls(); toast('Papel restablecido.', 1800);
+      return;
     } else {
       Object.assign(S, { size: DEFAULTS.size, letterSpacing: DEFAULTS.letterSpacing, wordSpacing: DEFAULTS.wordSpacing, imperfection: DEFAULTS.imperfection, speed: DEFAULTS.speed, animate: DEFAULTS.animate });
     }
@@ -192,7 +196,6 @@ function buildControls() {
   buildSwatches($('#ink-swatches'), INK_COLORS, () => S.color, (c, custom) => { S.color = c; S.colorCustom = true; settingChanged('color'); });
   buildChips($('#overflow-chips'), [['back', 'En el dorso'], ['new', 'En otra hoja']], () => S.overflow, (k) => { S.overflow = k; settingChanged('overflow'); });
   buildChips($('#refmode-chips'), [['panel', 'Al costado'], ['float', 'Ventana flotante'], ['ghost', 'Fantasma en la hoja']], () => S.refMode, (k) => { S.refMode = k; saveSettings(); refsApi?.placeRef(); refsApi?.refreshGhost(); });
-  buildChips($('#reffont-chips'), [['legible', 'Legible'], ['hand', 'Mi letra']], () => S.refFont, (k) => { S.refFont = k; saveSettings(); refsApi?.refreshView(); });
   buildChips($('#source-chips'), [['auto', 'Automática'], ['mine', 'Mi letra'], ['demo', 'Ejemplo']], () => S.source, (k) => {
     S.source = k; applySource(); clearSpriteCache(); renderHandStatus(); settingChanged('source'); writer.relayout();
   });
@@ -247,12 +250,13 @@ function faceLabel(info) {
 function updatePager(info) {
   const lb = faceLabel(info);
   $('#pg-label').innerHTML = `<span class="long">${lb.long}</span><span class="short" aria-hidden="true">${lb.short}</span>`;
-  $('#pg-label').setAttribute('aria-label', lb.long);
   const flip = $('#btn-flip');
   flip.querySelector('.lab').textContent = lb.f.side === 'back' ? 'Ver el frente' : lb.hasBack ? 'Ver el dorso' : 'Dar vuelta';
   flip.setAttribute('aria-label', lb.f.side === 'back' ? 'Dar vuelta la hoja y ver el frente' : lb.hasBack ? 'Dar vuelta la hoja y ver el dorso' : 'Dar vuelta la hoja y escribir en el dorso');
   $('#pg-prev').disabled = info.page <= 0;
   $('#pg-next').disabled = info.page >= info.pages - 1;
+  // con una sola cara, las flechas no sirven de nada: se ocultan
+  $('#pg-prev').hidden = $('#pg-next').hidden = info.pages <= 1;
   $('#empty-hint').hidden = info.text.length > 0;
   $('#empty-hint').textContent = isTouch() ? 'Tocá la hoja y empezá a escribir' : 'Hacé clic en la hoja y empezá a escribir';
   const hs = $('#hand-status');
@@ -482,10 +486,18 @@ function setupNote() {
 /* ------------------------------------------------------------------ */
 /* Versiones                                                           */
 /* ------------------------------------------------------------------ */
+let lastDeletedVersion = null; // { v, i }: se puede deshacer mientras la ventana siga abierta
 function renderVersions() {
   const list = LS.get('pyl.versions', []);
   const ul = $('#ver-list');
   ul.innerHTML = '';
+  if (lastDeletedVersion) {
+    const li = document.createElement('li'); li.className = 'undo';
+    const sp = document.createElement('span'); sp.className = 't'; sp.textContent = `«${lastDeletedVersion.v.name}» borrada.`;
+    const un = document.createElement('button'); un.type = 'button'; un.className = 'btn'; un.textContent = 'Deshacer';
+    un.addEventListener('click', () => { const l = LS.get('pyl.versions', []); l.splice(Math.min(lastDeletedVersion.i, l.length), 0, lastDeletedVersion.v); LS.set('pyl.versions', l); lastDeletedVersion = null; renderVersions(); });
+    li.append(sp, un); ul.append(li);
+  }
   if (!list.length) { const li = document.createElement('li'); li.className = 'muted'; li.textContent = 'Todavía no guardaste ninguna versión.'; ul.append(li); return; }
   for (const v of list) {
     const li = document.createElement('li');
@@ -503,13 +515,17 @@ function renderVersions() {
       $('#versions').close();
     });
     const del = document.createElement('button'); del.type = 'button'; del.className = 'btn danger'; del.textContent = 'Borrar';
-    del.addEventListener('click', () => { LS.set('pyl.versions', LS.get('pyl.versions', []).filter((x) => x.id !== v.id)); renderVersions(); });
+    del.addEventListener('click', () => {
+      const all = LS.get('pyl.versions', []);
+      lastDeletedVersion = { v, i: all.findIndex((x) => x.id === v.id) };
+      LS.set('pyl.versions', all.filter((x) => x.id !== v.id)); renderVersions();
+    });
     li.append(t, open, del);
     ul.append(li);
   }
 }
 function setupVersions() {
-  $('#btn-versions').addEventListener('click', () => { renderVersions(); $('#versions').showModal(); });
+  $('#btn-versions').addEventListener('click', () => { lastDeletedVersion = null; renderVersions(); $('#versions').showModal(); });
   $('#ver-save').addEventListener('click', () => {
     if (!writer.text.trim()) { toast('Escribí algo antes de guardar una versión.'); return; }
     const list = LS.get('pyl.versions', []);
@@ -837,7 +853,7 @@ function setupNewLetter() {
     if (!isMobile()) $('#cap').focus({ preventScroll: true });
     if (!prev.text.trim()) return;
     undoCarta = prev;
-    toast('Carta nueva. La anterior sigue acá por unos segundos.', 8000, { label: 'Deshacer', run: () => {
+    toast('Hoja en blanco. Tu carta anterior sigue acá por unos segundos.', 8000, { label: 'Deshacer', run: () => {
       S.seed = prev.seed; saveSettings(); writer.setText(prev.text); writer._syncCap(); persistDraft(); undoCarta = null;
     } });
   };

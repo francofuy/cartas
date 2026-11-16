@@ -50,3 +50,33 @@
 input:disabled { opacity: .4; cursor: default; }
 
 @media (max-width: 899px) { .pop.wide { width: auto; } .pgrid { grid-template-columns: repeat(3, 1fr); } .rgrid { grid-template-columns: repeat(3, 1fr); } }
+
+/* ---------- ajustes de la auditoría ---------- */
+/* grupos plegables en «Editar»: menos controles a la vez */
+.grp { border-top: 1px solid var(--ring); margin-top: 14px; padding-top: 2px; }
+.grp > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; min-height: 40px; font-weight: 600; font-size: .9em; border-radius: 8px; }
+.grp > summary::-webkit-details-marker { display: none; }
+.grp > summary::after { content: ""; width: 7px; height: 7px; margin-right: 4px; border-right: 1.6px solid currentColor; border-bottom: 1.6px solid currentColor; transform: rotate(45deg); transition: transform 200ms var(--ease); }
+.grp[open] > summary::after { transform: rotate(-135deg); }
+.grp > summary:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+/* el archivero en escritorio se abre desde la pestaña de la esquina: el botón de la barra solo hace falta en celular */
+@media (min-width: 900px) { .dock-btn[data-panel="cab"] { display: none; } }
+@media (min-width: 900px) { .dock { width: 72px; } .dock-btn { width: 60px; } }
+.dock-btn .t { letter-spacing: -.01em; }
+
+/* «Versiones» con nombre */
+.round.wide { width: auto; display: inline-flex; align-items: center; gap: 8px; padding: 0 16px 0 12px; border-radius: 999px; font-weight: 500; font-size: .92em; }
+.round.wide .ico { display: grid; }
+@media (max-width: 899px) { .round.wide { width: 44px; padding: 0; justify-content: center; } .round.wide .lab { display: none; } }
+.ver-list li.undo { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+/* áreas táctiles de 44 px donde antes quedaban más chicas */
+@media (pointer: coarse), (max-width: 899px) {
+  .seg .tab { height: 44px; }
+  .ptabs [role="tab"] { height: 44px; }
+  .bbtn { min-width: 44px !important; height: 44px; }
+  .sw { position: relative; }
+  .sw::before { content: ""; position: absolute; inset: -8px; border-radius: 50%; }
+  .chip { min-height: 44px; }
+}

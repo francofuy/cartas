@@ -131,7 +131,7 @@ export function setupRefs(h) {
 
   function applyActive() {
     const r = active();
-    $('#ref-title').textContent = r ? r.title : 'Nota de referencia';
+    $('#ref-title').textContent = r ? r.title : 'Referencia';
     $('#note-text').hidden = !!r;
     $('#ref-view').hidden = !r;
     $('#note-clear').hidden = !!r;
@@ -154,8 +154,8 @@ export function setupRefs(h) {
     host.innerHTML = '';
     host.style.setProperty('--fs-ref', h.S().noteSize + 'px');
     const btn = $('#ref-font');
-    btn.textContent = font === 'hand' ? 'Letra legible' : 'Mi letra';
-    btn.setAttribute('aria-label', font === 'hand' ? 'Mostrar con letra legible' : 'Mostrar con mi letra');
+    btn.textContent = font === 'hand' ? 'Letra legible' : 'Escrita a mano';
+    btn.setAttribute('aria-label', font === 'hand' ? 'Mostrar la referencia con letra legible' : 'Mostrar la referencia escrita a mano con tu letra');
     if (font === 'hand') {
       try { host.append(handCanvas(r, w)); } catch (e) { console.warn(e); host.append(el('div', 'txt', r.text)); }
     } else host.append(el('div', 'txt', r.text));
@@ -251,7 +251,7 @@ export function setupRefs(h) {
   function openEditor(id = null) {
     editingId = id;
     const r = id ? byId(id) : null;
-    $('#refdlg-title').textContent = r ? 'Editar carta' : 'Nueva carta';
+    $('#refdlg-title').textContent = r ? 'Editar carta de referencia' : 'Sumar carta de referencia';
     $('#ref-t').value = r ? r.title : '';
     $('#ref-f').value = r ? (r.folder || '') : '';
     $('#ref-x').value = r ? r.text : '';
