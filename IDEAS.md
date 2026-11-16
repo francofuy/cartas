@@ -64,3 +64,6 @@ Idea: poder escribir en A5 además de A4, y que lo que se escribe viva en un cua
 
 ### Cuadernos en la app: cómo cuadra la doble cara
 Cada carta en curso es un cuaderno (A4 o A5, color de tapa, nombre). La hoja de papel tiene frente y dorso como siempre; el cuaderno abierto muestra dos páginas: la de la derecha es el frente de una hoja y la de la izquierda es el dorso de la anterior. Se escribe a la derecha; al pasar la hoja queda a la izquierda su dorso (la página que sigue), y después la derecha. El espiral está a la izquierda en el frente y a la derecha en el dorso. El orden de las caras no cambió (frente, dorso, frente, dorso…), así que la impresión a doble cara sigue igual y cada hoja se imprime con su frente y su dorso. A5 se imprime con el papel de la impresora en A5.
+
+### Pasar las hojas con el espiral (hecho, js/hojas.js)
+El espiral queda quieto y la hoja gira alrededor de él. Dar vuelta (frente → dorso): la hoja cruza el espiral y la cámara se corre a la página de la izquierda. Dorso → frente de la que sigue: la cámara se desliza a la página de la derecha, sin girar nada. Hoja nueva desde el frente: la hoja cruza el espiral y queda a la izquierda; la que sigue ya estaba debajo, en el mismo lugar. Al volver, el camino inverso. Del lado contrario al espiral asoma un pedazo de la página vecina.

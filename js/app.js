@@ -18,6 +18,7 @@ import { PenSound } from './sound.js';
 import { setupLetters } from './letters.js';
 import { setupFocus } from './focus.js';
 import { setupCuadernos } from './cuadernos.js';
+import { createTurner } from './hojas.js';
 import { FMT, PW, PH } from './format.js';
 import { exportBackup, importBackup, describe as describeBackup } from './backup.js';
 
@@ -295,7 +296,7 @@ function faceLabel(info) {
 function updatePager(info) {
   curlApi?.place();
   const lb = faceLabel(info);
-  renderBinding(lb.f.side);
+  renderBinding(lb.f.side); turner?.updateNeighbor();
   $('#pg-label').innerHTML = `<span class="long">${lb.long}</span><span class="short" aria-hidden="true">${lb.short}</span>`;
   const flip = $('#btn-flip');
   flip.querySelector('.lab').textContent = lb.f.side === 'back' ? 'Ver el frente' : lb.hasBack ? 'Ver el dorso' : 'Dar vuelta';
@@ -423,42 +424,21 @@ function togglePanel(name) {
   else setLeft(openPanel === name ? null : name);
 }
 const closeDrawers = () => { setLeft(null); setNote(false); };
-let refsApi = null, cajonApi = null, papersApi = null, curlApi = null, lettersApi = null, focusApi = null, cuadernosApi = null;
+let refsApi = null, cajonApi = null, papersApi = null, curlApi = null, lettersApi = null, focusApi = null, cuadernosApi = null, turner = null;
 
 /* ------------------------------------------------------------------ */
 /* Hojas: dar vuelta, tomar otra, cambiar de cara                      */
 /* ------------------------------------------------------------------ */
 const animOn = () => !!(THEME && THEME.anim) && !reduceMotion();
 
-// Pasar del frente al dorso es dar vuelta la hoja del cuaderno: gira sobre el espiral (el borde donde está el espiral) y queda su otra cara;
-// entre hojas distintas (del dorso al frente de la que sigue) la página se desliza.
-async function changeFace(kind, change) {
-  const wrap = $('.sheet-wrap');
-  if (!animOn() || !wrap.animate) { change(); return; }
-  try {
-    if (kind === 'flip') {
-      const from = wrap.dataset.side === 'back' ? 'back' : 'front'; // desde qué cara se gira
-      const sgn = from === 'front' ? -1 : 1;                        // el espiral está a la izquierda en el frente y a la derecha en el dorso
-      wrap.style.transformOrigin = from === 'front' ? '0 50%' : '100% 50%';
-      await wrap.animate([{ transform: 'rotateY(0deg)', filter: 'brightness(1)' }, { transform: `rotateY(${sgn * 88}deg)`, filter: 'brightness(.7)' }], { duration: 230, easing: 'cubic-bezier(.5,0,.8,.4)' }).finished;
-      change(); // acá ya cambió la cara y el espiral pasó al otro lado
-      wrap.style.transformOrigin = from === 'front' ? '100% 50%' : '0 50%';
-      await wrap.animate([{ transform: `rotateY(${-sgn * 88}deg)`, filter: 'brightness(.7)' }, { transform: 'rotateY(0deg)', filter: 'brightness(1)' }], { duration: 300, easing: 'cubic-bezier(.2,.7,.3,1)' }).finished;
-      wrap.style.transformOrigin = '';
-    } else {
-      const dx = kind === 'next' ? 28 : -28;
-      await wrap.animate([{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: `translateX(${-dx}px)` }], { duration: 110, easing: 'ease-in' }).finished;
-      change();
-      await wrap.animate([{ opacity: 0, transform: `translateX(${dx}px)` }, { opacity: 1, transform: 'translateX(0)' }], { duration: 170, easing: 'cubic-bezier(.23,1,.32,1)' }).finished;
-    }
-  } catch { wrap.style.transformOrigin = ''; change(); }
-}
+// Pasar de una cara a otra se anima como en un cuaderno con espiral (ver js/hojas.js): la hoja gira alrededor del espiral o la cámara se desliza a la página de al lado.
+const turnFace = (change, src, dst) => (turner ? turner.turn(src, dst, change) : change());
 function goPage(p) {
   const L = writer.layout;
   p = clamp(p, 0, L.pages - 1);
   if (p === writer.page) return;
   const a = L.faces[writer.page], b = L.faces[p];
-  changeFace(a.sheet === b.sheet ? 'flip' : p > writer.page ? 'next' : 'prev', () => writer.setPage(p));
+  turnFace(() => writer.setPage(p), a, b);
 }
 // dónde termina una cara: donde empieza la siguiente (o el final del texto)
 function faceEnd(f) {
@@ -488,7 +468,7 @@ function setupSheetOps() {
     const L = writer.layout, f = L.faces[writer.page], sh = L.sheets[f.sheet];
     if (f.side === 'back') { goPage(sh.front); return; }
     if (sh.back != null) { goPage(sh.back); return; }
-    changeFace('flip', () => insertMarker('\v', faceEnd(writer.page)));
+    turnFace(() => insertMarker('\v', faceEnd(writer.page)), f, { sheet: f.sheet, side: 'back' });
   });
   $('#btn-sheet').addEventListener('click', () => {
     const L = writer.layout, f = L.faces[writer.page], i = f.sheet;
@@ -496,7 +476,7 @@ function setupSheetOps() {
     const last = L.pages - 1, n = writer.text.length;
     let a = 0; while (a <= n && L.caret[a].page < last) a++;
     if (!writer.text.slice(a).replace(/[\f\v\s]/g, '')) { toast('Esta hoja todavía está vacía: escribí algo antes de tomar otra.'); return; }
-    changeFace('next', () => insertMarker('\f', n));
+    turnFace(() => insertMarker('\f', n), f, { sheet: i + 1, side: 'front' });
   });
 }
 
@@ -927,6 +907,7 @@ async function init() {
     onFormat: () => { if (writer) { writer.cssW = 0; fit(); } },
   });
   focusApi = setupFocus({ writer: () => writer, toast, animOn, refit: () => fit() });
+  turner = createTurner({ writer: () => writer, S: () => S, animOn, sound, isMobile });
   cuadernosApi = setupCuadernos({
     lettersApi: () => lettersApi, writer: () => writer, S: () => S, animOn, toast,
     fit: () => { $('#scroller').scrollTo({ top: 0 }); fit(); },

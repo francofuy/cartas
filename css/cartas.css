@@ -196,3 +196,23 @@ body.mesa-on #scroller, body.mesa-on .dock, body.mesa-on .stage-bar, body.mesa-o
 .nb-sw[aria-pressed="true"] { border-color: currentColor; box-shadow: 0 0 0 2px var(--g-tint-panel, #000) inset; }
 @media print { .mesa { display: none !important; } }
 @media (prefers-reduced-motion: reduce) { .nb-in { transition: none; } }
+
+/* ---------- pasar las hojas alrededor del espiral ---------- */
+.sheet-wrap .fx { position: absolute; left: 0; top: 0; z-index: 6; pointer-events: none; transform-style: preserve-3d; }
+.fxp { position: absolute; top: 0; background-color: #f1ecdf; background-size: 100% 100%; border-radius: 3px; }
+.fxl { position: absolute; left: 0; top: 0; transform-origin: 0 50%; transform-style: preserve-3d; will-change: transform; }
+.fxf, .fxb { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; background-color: #f1ecdf; background-size: 100% 100%; border-radius: 3px; overflow: hidden; }
+.fxb { transform: rotateY(180deg); }
+.fxs { position: absolute; inset: 0; background: linear-gradient(90deg, rgb(0 0 0 / .55), rgb(0 0 0 / .05) 60%, rgb(0 0 0 / .35)); opacity: 0; pointer-events: none; }
+.fxsh { position: absolute; inset: 0; background: linear-gradient(90deg, rgb(0 0 0 / .6), transparent 70%); opacity: 0; pointer-events: none; }
+/* un pedazo de la página de al lado, del otro lado del espiral */
+.sheet-wrap .nbr { position: absolute; top: 0; height: 100%; z-index: 1; pointer-events: none; background-repeat: no-repeat; filter: brightness(.78); border-radius: 3px; transition: opacity 200ms ease; }
+.sheet-wrap .nbr[hidden] { display: none; }
+.sheet-wrap .nbr[data-side="left"] { right: 100%; }
+.sheet-wrap .nbr[data-side="right"] { left: 100%; }
+.sheet-wrap .nbr.cover { background: linear-gradient(135deg, #3a3b45, #25262d); filter: none; }
+.sheet-wrap .nbr::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.sheet-wrap .nbr[data-side="left"]::after { background: linear-gradient(270deg, rgb(0 0 0 / .45), transparent 45%); }
+.sheet-wrap .nbr[data-side="right"]::after { background: linear-gradient(90deg, rgb(0 0 0 / .45), transparent 45%); }
+body.mesa-on .nbr, body.focus .nbr { opacity: 0; }
+@media print { .nbr, .fx { display: none !important; } }
