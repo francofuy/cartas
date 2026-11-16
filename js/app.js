@@ -16,6 +16,7 @@ import { setupCajon } from './cajon.js';
 import { setupCurl } from './curl.js';
 import { PenSound } from './sound.js';
 import { setupLetters } from './letters.js';
+import { setupFocus } from './focus.js';
 import { exportBackup, importBackup, describe as describeBackup } from './backup.js';
 
 /* ------------------------------------------------------------------ */
@@ -47,10 +48,11 @@ const DEFAULTS = {
   ghostAlpha: 0.3,
   sound: true,           // sonido suave de la lapicera al escribir
   soundVol: 0.5,
+  sealedAt: { top: true, tab: true, empty: true }, // dónde se ven las cartas cerradas: botón arriba, lengüeta abajo, hoja vacía
 };
 function loadSettings() {
   const saved = LS.get('pyl.settings', {});
-  return { ...DEFAULTS, ...saved, paper: { ...DEFAULTS.paper, ...(saved.paper || {}) } };
+  return { ...DEFAULTS, ...saved, paper: { ...DEFAULTS.paper, ...(saved.paper || {}) }, sealedAt: { ...DEFAULTS.sealedAt, ...(saved.sealedAt || {}) } };
 }
 let S = loadSettings();
 const saveSettings = debounce(() => LS.set('pyl.settings', S), 250);
@@ -214,6 +216,15 @@ function buildControls() {
   });
   buildSwatches($('#ink-swatches'), INK_COLORS, () => S.color, (c, custom) => { S.color = c; S.colorCustom = true; settingChanged('color'); });
   buildChips($('#overflow-chips'), [['back', 'En el dorso'], ['new', 'En otra hoja']], () => S.overflow, (k) => { S.overflow = k; settingChanged('overflow'); });
+  { // dónde se ven las cartas cerradas (se pueden combinar)
+    const host = $('#sealedat-chips');
+    for (const [k, label] of [['top', 'Botón arriba'], ['tab', 'Lengüeta abajo'], ['empty', 'En la hoja vacía']]) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = label; b.dataset.key = k;
+      const sync = () => b.setAttribute('aria-pressed', String(!!S.sealedAt[k]));
+      b.addEventListener('click', () => { S.sealedAt[k] = !S.sealedAt[k]; sync(); saveSettings(); lettersApi?.applyViews(); });
+      sync(); host.append(b);
+    }
+  }
   buildChips($('#refmode-chips'), [['panel', 'Al costado'], ['float', 'Ventana flotante'], ['ghost', 'Fantasma en la hoja']], () => S.refMode, (k) => { S.refMode = k; saveSettings(); refsApi?.placeRef(); refsApi?.refreshGhost(); });
   buildChips($('#source-chips'), [['auto', 'Automática'], ['mine', 'Mi letra'], ['demo', 'Ejemplo']], () => S.source, (k) => {
     S.source = k; applySource(); clearSpriteCache(); renderHandStatus(); settingChanged('source'); writer.relayout();
@@ -279,6 +290,7 @@ function updatePager(info) {
   // con una sola cara, las flechas no sirven de nada: se ocultan
   $('#pg-prev').hidden = $('#pg-next').hidden = info.pages <= 1;
   $('#empty-hint').hidden = info.text.length > 0;
+  lettersApi?.syncEmpty(info.text.length === 0);
   $('#empty-hint').textContent = isTouch() ? 'Tocá la hoja y empezá a escribir' : 'Hacé clic en la hoja y empezá a escribir';
   const hs = $('#hand-status');
   if (info.missing.length && lib.useMine) {
@@ -396,7 +408,7 @@ function togglePanel(name) {
   else setLeft(openPanel === name ? null : name);
 }
 const closeDrawers = () => { setLeft(null); setNote(false); };
-let refsApi = null, cajonApi = null, papersApi = null, curlApi = null, lettersApi = null;
+let refsApi = null, cajonApi = null, papersApi = null, curlApi = null, lettersApi = null, focusApi = null;
 
 /* ------------------------------------------------------------------ */
 /* Hojas: dar vuelta, tomar otra, cambiar de cara                      */
@@ -888,6 +900,7 @@ async function init() {
     paperBlob: async (id) => papersApi?.imageBlob(id),
     onOpenDialog: () => { lastDeletedVersion = null; renderVersions(); },
   });
+  focusApi = setupFocus({ writer: () => writer, toast, animOn });
   refsApi = setupRefs({
     S: () => S, saveSettings, writer: () => writer, lib, toast, ask, isMobile, LS,
     inFocus: () => false, isNoteOpen: () => noteOpen, openNote: () => setNote(true), closeNote: () => setNote(false), syncControls,
@@ -919,7 +932,10 @@ async function init() {
   $$('.tab').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
   $$('.dock-btn[data-panel]').forEach((b) => b.addEventListener('click', () => togglePanel(b.dataset.panel)));
   document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === '.' && !document.querySelector('dialog[open]')) { e.preventDefault(); if ($('#btn-focus')?.offsetParent) focusApi?.toggle(); return; }
+    if (e.key === 'Escape' && focusApi?.isOn()) { e.preventDefault(); focusApi.leave(); return; }
     if (e.key !== 'Escape' || document.querySelector('dialog[open]')) return;
+    if (lettersApi?.closePops()) return;
     if (refsApi?.peekOpen()) return; // la vista de cerca maneja su propio Esc
     if (cajonApi?.escape()) { $('.dock-btn[data-panel="cab"]')?.focus(); return; }
     if (openPanel) { const b = $(`.dock-btn[data-panel="${openPanel}"]`); setLeft(null); b?.focus(); }

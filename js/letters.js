@@ -120,7 +120,7 @@ export function setupLetters(h) {
       const thumbs = [];
       for (let i = 0; i < pages; i++) { const c = document.createElement('canvas'); w.renderPageTo(c, i, 1.2); thumbs.push(c.toDataURL('image/jpeg', 0.8)); }
       const big = document.createElement('canvas'); w.renderPageTo(big, 0, 2); const fxImg = big.toDataURL('image/jpeg', 0.88);
-      const target = chip.getBoundingClientRect();
+      const target = flyTarget().getBoundingClientRect();
       const fx = h.animOn() ? playSeal({ image: fxImg, style: styleOf(id), target, sound: h.sound }) : Promise.resolve();
       if (!h.animOn()) h.busy('Cerrando la carta…');
       // se congela la tinta de cada cara (PNG transparente a 300 ppp); el papel se guarda como datos
@@ -163,7 +163,38 @@ export function setupLetters(h) {
     renderBuzon();
   }
   const tray = $('#bz-tray'), chip = $('#letter-chip');
-  function pulseBuzon() { chip.classList.add('pulse'); setTimeout(() => chip.classList.remove('pulse'), 2200); }
+  const sbtn = $('#sealed-btn'), pop = $('#sealed-pop'), tabBox = $('#sealed-tab'), tabH = $('#stab-handle'), tabPanel = $('#stab-panel'), emptyBox = $('#empty-sealed');
+  const at = () => ({ top: true, tab: true, empty: true, ...(S().sealedAt || {}) });
+  const flyTarget = () => (!sbtn.hidden ? sbtn : chip);
+  function pulseBuzon() { const t = flyTarget(); t.classList.add('pulse'); setTimeout(() => t.classList.remove('pulse'), 2200); }
+
+  /* ---- entradas a las cartas cerradas: botón arriba, lengüeta abajo y hoja vacía ---- */
+  let popOpen = false, tabOpen = false, textEmpty = false;
+  function setPop(v) { popOpen = v; pop.hidden = !v; sbtn.setAttribute('aria-expanded', String(v)); if (v) setTab(false); }
+  function setTab(v) { tabOpen = v; tabPanel.hidden = !v; tabH.setAttribute('aria-expanded', String(v)); tabBox.classList.toggle('open', v); if (v) setPop(false); }
+  sbtn.addEventListener('click', () => setPop(!popOpen));
+  tabH.addEventListener('click', () => setTab(!tabOpen));
+  document.addEventListener('pointerdown', (e) => {
+    if (popOpen && !pop.contains(e.target) && !sbtn.contains(e.target)) setPop(false);
+    if (tabOpen && !tabBox.contains(e.target)) setTab(false);
+  });
+  const showAll = () => { setPop(false); setTab(false); api.openSealed(); };
+  $('#sealed-pop-all').addEventListener('click', showAll);
+  $('#stab-all').addEventListener('click', showAll);
+  $('#empty-sealed-all').addEventListener('click', showAll);
+  function closePops() { // devuelve true si había algo abierto (para que Esc lo cierre primero)
+    if (popOpen) { setPop(false); sbtn.focus(); return true; }
+    if (tabOpen) { setTab(false); tabH.focus(); return true; }
+    return false;
+  }
+  function applyViews() {
+    const v = at(), n = letters.length;
+    sbtn.hidden = !v.top; tabBox.hidden = !v.tab;
+    if (!v.top && popOpen) setPop(false);
+    if (!v.tab && tabOpen) setTab(false);
+    emptyBox.hidden = !(v.empty && textEmpty && n > 0);
+  }
+  function syncEmpty(isEmptyText) { textEmpty = !!isEmptyText; applyViews(); }
 
   // cada sobre tiene su propio papel y su propio lacre (siempre el mismo para la misma carta)
   const PAPERS = ['#f1e6cc', '#e4ecf7', '#f7e3ea', '#e1f0e5', '#ece5f8', '#f8ecd2'];
@@ -171,11 +202,35 @@ export function setupLetters(h) {
   const hashOf = (id) => { let x = 0; for (const ch of String(id)) x = (x * 31 + ch.charCodeAt(0)) >>> 0; return x; };
   function styleOf(id) { const x = hashOf(id); return { paper: PAPERS[x % PAPERS.length], wax: WAXES[(x >> 3) % WAXES.length] }; }
 
+  function miniItem(rec, card) {
+    const st = styleOf(rec.id), li = document.createElement('li');
+    const b = el('button', 'sobre' + (card ? ' card' : ' mini')); b.type = 'button'; b.dataset.id = rec.id;
+    b.style.setProperty('--paper', st.paper); b.style.setProperty('--wax', st.wax);
+    b.classList.toggle('pend', rec.status === 'printing');
+    b.setAttribute('aria-label', `${rec.title}, cerrada el ${fmtDate(rec.ts)}, ${plural(rec.sheets.length, 'hoja', 'hojas')}${rec.status === 'printing' ? '. Impresión sin confirmar' : ''}`);
+    b.append(el('b', '', rec.title), el('small', '', card ? `${plural(rec.sheets.length, 'hoja', 'hojas')}` : `${fmtDate(rec.ts)} · ${plural(rec.sheets.length, 'hoja', 'hojas')}${rec.status === 'printing' ? ' · sin confirmar' : ''}`));
+    b.addEventListener('click', () => { setPop(false); setTab(false); $('#versions').close(); openMail(rec); });
+    li.append(b); return li;
+  }
+  function fillMini(ul, list, card) {
+    ul.innerHTML = '';
+    if (!list.length) { ul.append(el('li', 'empty muted', 'Todavía no cerraste ninguna carta.')); return; }
+    for (const rec of list) ul.append(miniItem(rec, card));
+  }
   function renderBuzon() {
-    const cnt = $('#bz-count'); cnt.textContent = letters.length || ''; cnt.hidden = !letters.length;
-    chip.setAttribute('aria-label', `Carta que estás escribiendo. Abrir Mis cartas${letters.length ? `. ${plural(letters.length, 'carta cerrada', 'cartas cerradas')}` : ''}`);
+    const n = letters.length;
+    const cnt = $('#bz-count'); cnt.textContent = n || ''; cnt.hidden = !n;
+    $('#stab-count').textContent = n || '';
+    const pend = letters.filter((l) => l.status === 'printing').length;
+    sbtn.setAttribute('aria-label', n ? `Cartas cerradas: ${n}${pend ? `, ${pend} con impresión sin confirmar` : ''}` : 'Cartas cerradas: ninguna todavía');
+    chip.setAttribute('aria-label', 'Carta que estás escribiendo. Abrir Mis cartas');
+    fillMini($('#sealed-pop-list'), letters.slice(0, 6), false);
+    fillMini($('#stab-list'), letters.slice(0, 8), false);
+    fillMini($('#empty-sealed-list'), letters.slice(0, 3), true);
+    $('#empty-sealed-all').textContent = n > 3 ? `Ver las ${n}` : 'Ver todas';
+    $('#sealed-pop-all').hidden = $('#stab-all').hidden = n === 0;
     tray.innerHTML = '';
-    if (!letters.length) { tray.append(el('li', 'empty muted', 'Todavía no cerraste ninguna carta.')); return; }
+    if (!n) tray.append(el('li', 'empty muted', 'Todavía no cerraste ninguna carta.'));
     for (const rec of letters) {
       const st = styleOf(rec.id), li = document.createElement('li');
       const b = el('button', 'sobre'); b.type = 'button'; b.dataset.id = rec.id;
@@ -186,6 +241,7 @@ export function setupLetters(h) {
       b.addEventListener('click', () => { $('#versions').close(); openMail(rec); });
       li.append(b); tray.append(li);
     }
+    applyViews();
   }
 
   /* ---- una carta cerrada ---- */
@@ -282,10 +338,12 @@ export function setupLetters(h) {
 
   /* ------------------------------------------------------------------ */
   load(); updateChip(); loadLetters();
-  return {
+  const api = {
     start() { const d = cur(); S().seed = d.seed || S().seed; return d.text || ''; },
     saveActive, openDialog, activeId: () => activeId, startBlank,
     openSealed() { openDialog(); $('#sealed-sec')?.scrollIntoView({ block: 'nearest' }); },
+    closePops, syncEmpty, applyViews,
     pendingCount: () => letters.filter((l) => l.status === 'printing').length,
   };
+  return api;
 }

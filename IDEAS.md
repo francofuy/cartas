@@ -3,7 +3,7 @@
 Cosas que se hablaron y quedaron para decidir más adelante. No están en la app.
 
 ## Dónde viven las cartas cerradas
-Hoy: una lista dentro de «Mis cartas», con un número en el botón de arriba a la izquierda (idea D).
+Hoy en la app (para probar): variantes 1 (botón arriba), 3 (lengüeta abajo) y 6 (en la hoja vacía), activables por separado en Escritura > Cartas cerradas. Además siempre está la lista en «Mis cartas». Falta elegir cuál(es) dejar.
 Maquetas: https://claude.ai/artifact/FQnRuGign6NnEbxUFduYf2
 
 - **A · Panel del dock.** Un botón nuevo abre un panel de vidrio con los sobres en lista. Tapa un poco la hoja mientras está abierto.
@@ -15,7 +15,7 @@ Maquetas: https://claude.ai/artifact/FQnRuGign6NnEbxUFduYf2
 ## Mejoras de la interfaz
 Maquetas: https://claude.ai/artifact/RqB3oS4xeErSzoUyMeL9Ug
 
-1. **Modo foco.** Al escribir, la barra de arriba, el dock y los botones se atenúan; vuelven al llevar el mouse a un borde.
+1. **Modo foco.** HECHO (para probar): todo se apaga y una luz tibia acompaña la lapicera, un poco por debajo de la punta. Botón «Foco» en la barra de la hoja, Ctrl + . y un botón en Escritura. Se sale con Esc.
 2. **Selector de ambiente dentro de la app.** El de noche podría activarse solo al anochecer.
 3. **Atajos de teclado visibles** al pasar el cursor por los botones del dock (los atajos todavía no existen).
 4. **Mesa con textura** (lino, madera clara, corcho) en lugar de los puntos, y hoja con sombra más realista.

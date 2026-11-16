@@ -56,10 +56,30 @@
   </div>
 </section>
 
+<!-- cartas cerradas: lengüeta abajo a la derecha (espejo del Archivero) -->
+<section id="sealed-tab" class="stab" aria-label="Cartas cerradas" hidden>
+  <div class="stab-panel gp" id="stab-panel" hidden>
+    <ul class="sealed-list compact" id="stab-list"></ul>
+    <div class="row between"><button class="btn sm" id="stab-all" type="button">Ver todas</button></div>
+  </div>
+  <button class="stab-handle gp" id="stab-handle" type="button" aria-expanded="false" aria-controls="stab-panel"><span>Cerradas</span><span class="cnt" id="stab-count"></span></button>
+</section>
+
+<!-- modo foco: todo se apaga y una luz acompaña lo que escribís -->
+<div id="focus-fx" aria-hidden="true"><div class="fx-dark"></div><div class="fx-warm"></div></div>
+<button id="focus-exit" class="btn sm" type="button" hidden>Salir del foco · Esc</button>
+
 <div id="app">
 
   <header class="top">
-    <button class="letter-chip g" id="letter-chip" type="button" title="Mis cartas: las que están en curso y las versiones de esta" aria-label="Carta que estás escribiendo. Abrir Mis cartas"><span class="ico" data-icon="letters"></span><span class="t">Carta sin título</span><span class="chip-n" id="bz-count" hidden></span></button>
+    <div class="top-l">
+      <button class="letter-chip g" id="letter-chip" type="button" title="Mis cartas: las que están en curso y las versiones de esta" aria-label="Carta que estás escribiendo. Abrir Mis cartas"><span class="ico" data-icon="letters"></span><span class="t">Carta sin título</span></button>
+      <button class="letter-chip g" id="sealed-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="sealed-pop" title="Cartas cerradas"><span class="ico" data-icon="mail"></span><span class="t">Cerradas</span><span class="chip-n" id="bz-count" hidden></span></button>
+      <div class="sealed-pop gp" id="sealed-pop" role="region" aria-label="Cartas cerradas" hidden>
+        <ul class="sealed-list compact" id="sealed-pop-list"></ul>
+        <div class="row between"><button class="btn sm" id="sealed-pop-all" type="button">Ver todas</button></div>
+      </div>
+    </div>
     <nav class="seg g" id="seg" aria-label="Secciones">
       <i class="pill" aria-hidden="true"></i>
       <button class="tab" data-view="write" aria-pressed="true">Escribir</button>
@@ -119,6 +139,14 @@
             <div class="chips" id="refmode-chips" role="group" aria-labelledby="lbl-rmode"></div>
           </div>
           <label class="field range"><span class="lbl">Intensidad del fantasma</span><input type="range" data-s="ghostAlpha" min="0.1" max="0.6" step="0.02"></label>
+          <h3 class="sub">Cartas cerradas</h3>
+          <div class="field"><span class="lbl" id="lbl-sealedat">Dónde se pueden ver</span>
+            <div class="chips" id="sealedat-chips" role="group" aria-labelledby="lbl-sealedat"></div>
+          </div>
+          <p class="hint">Siempre están también en «Mis cartas». Elegí las entradas que te resulten cómodas.</p>
+          <h3 class="sub">Modo foco</h3>
+          <p class="hint">Se apaga todo y una luz acompaña lo que escribís. Salís con Esc o con Ctrl + .</p>
+          <button type="button" class="btn" id="btn-focus-pop">Activar modo foco</button>
         </section>
 
         <section class="sec" data-sec="paper">
@@ -239,6 +267,7 @@
             <canvas id="sheet" aria-hidden="true"></canvas>
             <textarea id="cap" autocapitalize="sentences" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Texto de la carta"></textarea>
             <p class="empty-hint" id="empty-hint"></p>
+            <div class="empty-sealed" id="empty-sealed" hidden><b>Tus cartas cerradas</b><ul class="sealed-list cards" id="empty-sealed-list"></ul><button class="inline-link" id="empty-sealed-all" type="button">Ver todas</button></div>
           </div>
         </div>
         <!-- barra flotante bajo la hoja -->
@@ -253,6 +282,7 @@
             <button class="bbtn" id="btn-sheet" type="button" aria-label="Tomar otra hoja del montón"><span class="ico" data-icon="sheetPlus"></span><span class="lab">Hoja nueva</span></button>
           </div>
           <div class="zoom" role="group" aria-label="Vista de la hoja">
+            <button class="bbtn" id="btn-focus" type="button" title="Modo foco (Ctrl + .)" aria-label="Modo foco: se apaga todo y una luz acompaña lo que escribís"><span class="ico" data-icon="spot"></span><span class="lab">Foco</span></button>
             <button class="bbtn" id="btn-view" type="button" aria-label="Cambiar la vista de la hoja. Ahora: ancho"><span class="ico" data-icon="zoom"></span><span class="lab">Ancho</span></button>
           </div>
           <button class="bbtn seal" id="btn-seal" type="button" title="Cerrar la carta: se dobla, se sella y se guarda en Cartas cerradas" aria-label="Cerrar la carta: se dobla, se sella y se guarda en Cartas cerradas"><span class="ico" data-icon="seal"></span><span class="lab">Cerrar carta</span></button>

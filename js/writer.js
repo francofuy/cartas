@@ -216,6 +216,14 @@ export class Writer {
     return hitTest(this.layout, this.page, mmX, mmY);
   }
 
+  // dónde está la punta de la lapicera en la pantalla (para la luz del modo foco); k = píxeles por mm
+  penClient() {
+    const c = this._pen || this.layout.caret[this.caret];
+    if (!c || c.page !== this.page) return null;
+    const r = this.cv.getBoundingClientRect();
+    return { x: r.left + (c.x / PAGE_W) * r.width, y: r.top + (c.y / PAGE_H) * r.height, k: r.width / PAGE_W };
+  }
+
   caretClientY() {
     const c = this.layout.caret[this.caret];
     if (!c) return null;
@@ -298,9 +306,10 @@ export class Writer {
       if (this.erasing.length) busy = true;
     }
     // cursor: nunca va más adelante de la tinta
+    const ci = Math.min(this.caret, firstPending);
+    const c = this.layout.caret[ci] || this.layout.caret[this.layout.caret.length - 1];
+    this._pen = c || null;
     if (this.focused && this.blinkOn) {
-      const ci = Math.min(this.caret, firstPending);
-      const c = this.layout.caret[ci] || this.layout.caret[this.layout.caret.length - 1];
       if (c && c.page === this.page) {
         ctx.fillStyle = this.S.color;
         ctx.globalAlpha = 0.7;
