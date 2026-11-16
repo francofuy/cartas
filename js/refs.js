@@ -202,13 +202,13 @@ export function setupRefs(h) {
   /* dónde vive la referencia: cajón o ventana flotante (el fantasma solo suma el texto tenue) */
   const win = () => $('#refwin');
   function placeRef() {
-    const floating = mode() === 'float';
-    const refc = $('#refc'), host = floating ? $('#refwin-body') : $('#note');
-    if (refc.parentElement !== host) host.append(refc);
     showNote(h.isNoteOpen());
   }
+  matchMedia('(max-width: 899px)').addEventListener('change', () => showNote(h.isNoteOpen()));
   function showNote(open) {
     const floating = mode() === 'float';
+    // el contenido de la referencia viaja con el modo: si la ventana cambió de ancho (celular ↔ escritorio), se lo acomoda donde corresponde
+    { const refc = $('#refc'), host = floating ? $('#refwin-body') : $('#note'); if (refc.parentElement !== host) host.append(refc); }
     $('#note').classList.toggle('open', open && !floating);
     $('#view-write').classList.toggle('note-open', open && !floating);
     $('#view-write').classList.toggle('note-pinned', open && !floating && pinned);
