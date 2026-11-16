@@ -67,3 +67,6 @@ Cada carta en curso es un cuaderno (A4 o A5, color de tapa, nombre). La hoja de 
 
 ### Pasar las hojas con el espiral (hecho, js/hojas.js)
 El espiral queda quieto y la hoja gira alrededor de él. Dar vuelta (frente → dorso): la hoja cruza el espiral y la cámara se corre a la página de la izquierda. Dorso → frente de la que sigue: la cámara se desliza a la página de la derecha, sin girar nada. Hoja nueva desde el frente: la hoja cruza el espiral y queda a la izquierda; la que sigue ya estaba debajo, en el mismo lugar. Al volver, el camino inverso. Del lado contrario al espiral asoma un pedazo de la página vecina.
+
+### Espiral en el modo foco (hecho, js/focus3d.js)
+En el modo foco 3D el espiral es de verdad: aros de metal que siguen la curva de la hoja (y se enrollan con ella), agujeros en el borde, sombra de contacto sobre el papel y sombras proyectadas por la luz en V (spot con mapa de sombras). Va del lado que corresponde a la cara (izquierda en el frente, derecha en el dorso). Si en una computadora floja se siente pesado, se puede apagar el mapa de sombras (renderer.shadowMap.enabled).

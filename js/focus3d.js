@@ -52,7 +52,7 @@ float lightMask( int i ) {
 // h = { writer(), animOn() }
 export function createFocus3D(h) {
   let T = null, ready = false, running = false, raf = 0, texDirty = true;
-  let gW = 0, gH = 0, mesh;
+  let gW = 0, gH = 0, mesh, barEnv = null;
   let renderer, scene, camera, group, geo, base, tex, spot, halo, amb, flat, host, glowEl, vigEl, dimEl, canvasEl;
   let u = 0, uTarget = 0, uDur = 1.3, onArrive = null, pose0 = { d: 300, tx: 0, ty: LOOK.escena.camY }, zoomNow = LOOK.escena.zoom / 100, zoomTarget = zoomNow;
   const U = {}; const rows = []; const NX = 25; let NY = 480;
@@ -141,6 +141,7 @@ export function createFocus3D(h) {
       const et = new T.CanvasTexture(ec); et.mapping = T.EquirectangularReflectionMapping; et.encoding = T.sRGBEncoding;
       envMap = new T.PMREMGenerator(renderer).fromEquirectangular(et).texture;
     } catch { envMap = null; }
+    barEnv = envMap;
     const sc = document.createElement('canvas'); sc.width = 64; sc.height = 256; { const c = sc.getContext('2d'); c.fillStyle = '#808080'; c.fillRect(0, 0, 64, 256); for (let i = 0; i < 90; i++) { const v = 90 + Math.random() * 90; c.fillStyle = `rgb(${v},${v},${v})`; c.fillRect(Math.random() * 64, 0, 0.6 + Math.random() * 1.2, 256); } }
     const brushed = new T.CanvasTexture(sc); brushed.wrapS = brushed.wrapT = T.RepeatWrapping;
     const d = B.dark / 100;
@@ -178,6 +179,43 @@ export function createFocus3D(h) {
     slitMat.transparent = vis < 1; slitMat.opacity = vis;
   }
 
+
+  /* ---------- el espiral del cuaderno, en 3D: aros de metal que siguen la hoja, agujeros y sombra de contacto ---------- */
+  let ringMeshes = [], holeMeshes = [], aoMesh = null, ringMat = null, holeMat = null, aoMat = null, ringN = 0;
+  function buildRings() {
+    for (const m of [...ringMeshes, ...holeMeshes]) group.remove(m); if (aoMesh) group.remove(aoMesh);
+    ringMeshes = []; holeMeshes = []; ringN = Math.max(8, Math.round(H / 11));
+    const g = new T.TorusGeometry(4.3, 0.62, 10, 30); g.rotateX(Math.PI / 2); // un aro del espiral: queda en el plano de la hoja que pasa por el borde
+    ringMat = new T.MeshStandardMaterial({ color: 0xb4b7c2, metalness: 0.95, roughness: 0.3, envMap: barEnv, envMapIntensity: 0.9 }); patchMat(ringMat);
+    holeMat = new T.MeshBasicMaterial({ color: 0x0f0f14, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    const hg = new T.CircleGeometry(1.5, 16);
+    for (let i = 0; i < ringN; i++) {
+      const r = new T.Mesh(g, ringMat); r.castShadow = true; r.receiveShadow = true; group.add(r); ringMeshes.push(r);
+      const hl = new T.Mesh(hg, holeMat); group.add(hl); holeMeshes.push(hl);
+    }
+    // sombra de contacto del espiral sobre la hoja (más oscura pegada al borde)
+    const c = document.createElement('canvas'); c.width = 128; c.height = 4; const x = c.getContext('2d'), gr = x.createLinearGradient(0, 0, 128, 0);
+    gr.addColorStop(0, 'rgba(0,0,0,.6)'); gr.addColorStop(0.03, 'rgba(0,0,0,.35)'); gr.addColorStop(0.09, 'rgba(0,0,0,0)'); x.fillStyle = gr; x.fillRect(0, 0, 128, 4);
+    aoTex = new T.CanvasTexture(c); aoTex.wrapS = T.RepeatWrapping;
+    aoMat = new T.MeshBasicMaterial({ map: aoTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+    aoMesh = new T.Mesh(geo, aoMat); aoMesh.renderOrder = 1; group.add(aoMesh);
+  }
+  let aoTex = null;
+  function placeRings(penY, e, side) {
+    if (!ringMeshes.length) return;
+    const sgn = side === 'back' ? 1 : -1, ex = sgn * W / 2, inn = -sgn, vis = smooth(0.5, 1, e);
+    const lerp = (a, b, t) => a + (b - a) * t;
+    for (let i = 0; i < ringN; i++) {
+      const jf = ((i + 0.5) / ringN) * (NY - 1), j0 = Math.floor(jf), f = jf - j0, a = rows[j0], b = rows[Math.min(NY - 1, j0 + 1)];
+      const cy = lerp(a.cy, b.cy, f), cz = lerp(a.cz, b.cz, f), th = lerp(a.th, b.th, f), sn = Math.sin(th), cs = Math.cos(th);
+      const r = ringMeshes[i]; r.position.set(ex + inn * 2.1, penY + cy, cz); r.rotation.set(th, 0, 0);
+      const hl = holeMeshes[i]; hl.position.set(ex + inn * 5.8, penY + cy - sn * 0.06, cz + cs * 0.06); hl.rotation.set(th, 0, 0);
+    }
+    ringMat.transparent = vis < 1; ringMat.opacity = vis; holeMat.opacity = 0.85 * vis; aoMat.opacity = 0.9 * vis;
+    aoTex.repeat.x = sgn > 0 ? -1 : 1; aoTex.offset.x = sgn > 0 ? 1 : 0; // la sombra de contacto va del lado del espiral
+    for (const m of ringMeshes) m.visible = vis > 0; for (const m of holeMeshes) m.visible = vis > 0; aoMesh.visible = vis > 0;
+  }
+
   /* ---------- armado de la escena ---------- */
   async function init() {
     await loadThree(); T = window.THREE;
@@ -199,7 +237,10 @@ export function createFocus3D(h) {
     spot = new T.SpotLight(0xffcf98, 1, 430, 1.5, 0.15, 2); scene.add(spot, spot.target);
     halo = new T.SpotLight(0xffa862, 0.4, 760, 1.5, 0.15, 1.4); scene.add(halo, halo.target);
     flat = new T.HemisphereLight(0xfff8ec, 0xa8a8b4, 1.75); scene.add(flat); // luz pareja del arranque: la hoja se ve como la hoja normal
-    buildBar(renderer);
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
+    spot.castShadow = true; spot.angle = 1.1; spot.shadow.mapSize.set(1024, 1024); spot.shadow.camera.near = 40; spot.shadow.camera.far = 700; spot.shadow.bias = -0.0008; spot.shadow.radius = 3;
+    mesh.receiveShadow = true;
+    buildBar(renderer); buildRings();
     canvas.addEventListener('pointerdown', (e) => { e.preventDefault(); $('#cap')?.focus({ preventScroll: true }); });
     addEventListener('resize', () => { if (running) resize(); });
     ready = true;
@@ -240,6 +281,7 @@ export function createFocus3D(h) {
     if (texDirty) { tex.needsUpdate = true; texDirty = false; }
     const lx = pen.x - W / 2, ly = H / 2 - pen.y;
     deform(ly, e);
+    { const wl = w.layout, ff = wl && wl.faces[w.page]; placeRings(ly, e, ff ? ff.side : 'front'); }
     const yaw = -(lx / (W / 2)) * 0.16 * P.yaw * e, roll = T.MathUtils.clamp((pen.x - prevX) * -0.0009 * 5.1, -0.05, 0.05) * P.yaw * 6 * e; prevX = pen.x;
     group.rotation.set(0, yaw, roll);
     group.position.set(lx, ly, 0).applyEuler(group.rotation).negate().multiplyScalar(e); // la punta queda siempre en el origen
@@ -255,7 +297,7 @@ export function createFocus3D(h) {
     // arranca desde la hoja normal (rect = su rectángulo en pantalla; clip = la zona visible de la hoja)
     async start({ rect, clip, dur } = {}) {
       if (!ready) await init();
-      if (gW !== W || gH !== H) { geo.dispose(); geo = new T.PlaneGeometry(W, H, NX - 1, NY - 1); base = geo.attributes.position.array.slice(); gW = W; gH = H; mesh.geometry = geo; elKey = ''; } // la hoja cambió de tamaño (A4 / A5)
+      if (gW !== W || gH !== H) { geo.dispose(); geo = new T.PlaneGeometry(W, H, NX - 1, NY - 1); base = geo.attributes.position.array.slice(); gW = W; gH = H; mesh.geometry = geo; elKey = ''; buildRings(); } // la hoja cambió de tamaño (A4 / A5)
       running = true; first = true; ret = null; texDirty = true; last = performance.now(); u = 0; uTarget = 1; uDur = dur || 1.3; onArrive = null;
       zoomNow = zoomTarget = LOOK.escena.zoom / 100 * (h.viewFactor?.() || 1);
       host.hidden = false; resize(); setPose0(rect || { left: innerWidth * 0.2, top: 0, width: innerWidth * 0.6, height: innerWidth * 0.6 * H / W });

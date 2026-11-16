@@ -216,3 +216,5 @@ body.mesa-on #scroller, body.mesa-on .dock, body.mesa-on .stage-bar, body.mesa-o
 .sheet-wrap .nbr[data-side="right"]::after { background: linear-gradient(90deg, rgb(0 0 0 / .45), transparent 45%); }
 body.mesa-on .nbr, body.focus .nbr { opacity: 0; }
 @media print { .nbr, .fx { display: none !important; } }
+/* en el modo foco 3D el espiral lo dibuja la escena, con la luz */
+body.f3-hide .sheet-wrap .bind, body.f3-hide .sheet-wrap .nbr { visibility: hidden; }
