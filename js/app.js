@@ -48,7 +48,7 @@ const DEFAULTS = {
   ghostAlpha: 0.3,
   sound: true,           // sonido suave de la lapicera al escribir
   soundVol: 0.5,
-  sealedAt: { top: true, tab: true, empty: true }, // dónde se ven las cartas cerradas: botón arriba, lengüeta abajo, hoja vacía
+  sealedAt: { top: true, empty: true }, // dónde se ven las cartas cerradas: botón arriba, hoja vacía
 };
 function loadSettings() {
   const saved = LS.get('pyl.settings', {});
@@ -218,7 +218,7 @@ function buildControls() {
   buildChips($('#overflow-chips'), [['back', 'En el dorso'], ['new', 'En otra hoja']], () => S.overflow, (k) => { S.overflow = k; settingChanged('overflow'); });
   { // dónde se ven las cartas cerradas (se pueden combinar)
     const host = $('#sealedat-chips');
-    for (const [k, label] of [['top', 'Botón arriba'], ['tab', 'Lengüeta abajo'], ['empty', 'En la hoja vacía']]) {
+    for (const [k, label] of [['top', 'Botón arriba'], ['empty', 'En la hoja vacía']]) {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = label; b.dataset.key = k;
       const sync = () => b.setAttribute('aria-pressed', String(!!S.sealedAt[k]));
       b.addEventListener('click', () => { S.sealedAt[k] = !S.sealedAt[k]; sync(); saveSettings(); lettersApi?.applyViews(); });

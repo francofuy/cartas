@@ -163,35 +163,29 @@ export function setupLetters(h) {
     renderBuzon();
   }
   const tray = $('#bz-tray'), chip = $('#letter-chip');
-  const sbtn = $('#sealed-btn'), pop = $('#sealed-pop'), tabBox = $('#sealed-tab'), tabH = $('#stab-handle'), tabPanel = $('#stab-panel'), emptyBox = $('#empty-sealed');
-  const at = () => ({ top: true, tab: true, empty: true, ...(S().sealedAt || {}) });
+  const sbtn = $('#sealed-btn'), pop = $('#sealed-pop'), emptyBox = $('#empty-sealed');
+  const at = () => ({ top: true, empty: true, ...(S().sealedAt || {}) });
   const flyTarget = () => (!sbtn.hidden ? sbtn : chip);
   function pulseBuzon() { const t = flyTarget(); t.classList.add('pulse'); setTimeout(() => t.classList.remove('pulse'), 2200); }
 
-  /* ---- entradas a las cartas cerradas: botón arriba, lengüeta abajo y hoja vacía ---- */
-  let popOpen = false, tabOpen = false, textEmpty = false;
-  function setPop(v) { popOpen = v; pop.hidden = !v; sbtn.setAttribute('aria-expanded', String(v)); if (v) setTab(false); }
-  function setTab(v) { tabOpen = v; tabPanel.hidden = !v; tabH.setAttribute('aria-expanded', String(v)); tabBox.classList.toggle('open', v); if (v) setPop(false); }
+  /* ---- entradas a las cartas cerradas: el botón de arriba y la hoja vacía ---- */
+  let popOpen = false, textEmpty = false;
+  function setPop(v) { popOpen = v; pop.hidden = !v; sbtn.setAttribute('aria-expanded', String(v)); }
   sbtn.addEventListener('click', () => setPop(!popOpen));
-  tabH.addEventListener('click', () => setTab(!tabOpen));
   document.addEventListener('pointerdown', (e) => {
     if (popOpen && !pop.contains(e.target) && !sbtn.contains(e.target)) setPop(false);
-    if (tabOpen && !tabBox.contains(e.target)) setTab(false);
   });
-  const showAll = () => { setPop(false); setTab(false); api.openSealed(); };
+  const showAll = () => { setPop(false); api.openSealed(); };
   $('#sealed-pop-all').addEventListener('click', showAll);
-  $('#stab-all').addEventListener('click', showAll);
   $('#empty-sealed-all').addEventListener('click', showAll);
   function closePops() { // devuelve true si había algo abierto (para que Esc lo cierre primero)
     if (popOpen) { setPop(false); sbtn.focus(); return true; }
-    if (tabOpen) { setTab(false); tabH.focus(); return true; }
     return false;
   }
   function applyViews() {
     const v = at(), n = letters.length;
-    sbtn.hidden = !v.top; tabBox.hidden = !v.tab;
+    sbtn.hidden = !v.top;
     if (!v.top && popOpen) setPop(false);
-    if (!v.tab && tabOpen) setTab(false);
     emptyBox.hidden = !(v.empty && textEmpty && n > 0);
   }
   function syncEmpty(isEmptyText) { textEmpty = !!isEmptyText; applyViews(); }
@@ -209,7 +203,7 @@ export function setupLetters(h) {
     b.classList.toggle('pend', rec.status === 'printing');
     b.setAttribute('aria-label', `${rec.title}, cerrada el ${fmtDate(rec.ts)}, ${plural(rec.sheets.length, 'hoja', 'hojas')}${rec.status === 'printing' ? '. Impresión sin confirmar' : ''}`);
     b.append(el('b', '', rec.title), el('small', '', card ? `${plural(rec.sheets.length, 'hoja', 'hojas')}` : `${fmtDate(rec.ts)} · ${plural(rec.sheets.length, 'hoja', 'hojas')}${rec.status === 'printing' ? ' · sin confirmar' : ''}`));
-    b.addEventListener('click', () => { setPop(false); setTab(false); $('#versions').close(); openMail(rec); });
+    b.addEventListener('click', () => { setPop(false); $('#versions').close(); openMail(rec); });
     li.append(b); return li;
   }
   function fillMini(ul, list, card) {
@@ -220,15 +214,13 @@ export function setupLetters(h) {
   function renderBuzon() {
     const n = letters.length;
     const cnt = $('#bz-count'); cnt.textContent = n || ''; cnt.hidden = !n;
-    $('#stab-count').textContent = n || '';
     const pend = letters.filter((l) => l.status === 'printing').length;
     sbtn.setAttribute('aria-label', n ? `Cartas cerradas: ${n}${pend ? `, ${pend} con impresión sin confirmar` : ''}` : 'Cartas cerradas: ninguna todavía');
     chip.setAttribute('aria-label', 'Carta que estás escribiendo. Abrir Mis cartas');
     fillMini($('#sealed-pop-list'), letters.slice(0, 6), false);
-    fillMini($('#stab-list'), letters.slice(0, 8), false);
     fillMini($('#empty-sealed-list'), letters.slice(0, 3), true);
     $('#empty-sealed-all').textContent = n > 3 ? `Ver las ${n}` : 'Ver todas';
-    $('#sealed-pop-all').hidden = $('#stab-all').hidden = n === 0;
+    $('#sealed-pop-all').hidden = n === 0;
     tray.innerHTML = '';
     if (!n) tray.append(el('li', 'empty muted', 'Todavía no cerraste ninguna carta.'));
     for (const rec of letters) {

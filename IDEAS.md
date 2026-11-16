@@ -3,7 +3,7 @@
 Cosas que se hablaron y quedaron para decidir más adelante. No están en la app.
 
 ## Dónde viven las cartas cerradas
-Hoy en la app (para probar): variantes 1 (botón arriba), 3 (lengüeta abajo) y 6 (en la hoja vacía), activables por separado en Escritura > Cartas cerradas. Además siempre está la lista en «Mis cartas». Falta elegir cuál(es) dejar.
+Hoy en la app: variantes 1 (botón arriba) y 6 (en la hoja vacía), activables por separado en Escritura > Cartas cerradas. La 3 (lengüeta abajo) se quitó porque repetía al botón de arriba. Además siempre está la lista en «Mis cartas». Falta elegir cuál(es) dejar.
 Maquetas: https://claude.ai/artifact/FQnRuGign6NnEbxUFduYf2
 
 - **A · Panel del dock.** Un botón nuevo abre un panel de vidrio con los sobres en lista. Tapa un poco la hoja mientras está abierto.
@@ -28,3 +28,6 @@ Se está explorando una familia de ambientes oscuros.
 
 ## Plan pendiente (ya aprobado)
 Luz y tinta húmeda, portalápices; tachones, formato a mano y firma; fotos y cintas, sobre impreso; papel ya rayado con calibración; mesa 3D.
+
+## Luz del modo foco
+Hoy: elipse suave bajo la punta. Se pidió una luz «en V». Opciones mostradas: elipse, V que abre hacia arriba, cono de lámpara desde arriba, Λ desde la punta, haz diagonal, V con ambiente. Falta elegir y ajustar ángulo, alcance y tono.
