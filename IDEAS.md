@@ -23,7 +23,7 @@ Maquetas: https://claude.ai/artifact/RqB3oS4xeErSzoUyMeL9Ug
 6. **Botón Imprimir con animación** (una hoja se desliza hacia una bandeja antes de abrir la impresión).
 
 ## Ambientes de color
-Hoy: Índigo (escritorio #ccccff, principal #0033ff). Alternativas vistas: Papel y tinta, Salvia, Atardecer, Grafito y Noche.
+Elegido: Carbón (escritorio #0d0d10, acento #ececf2). Antes: Índigo (#ccccff, #0033ff). Otras vistas: Papel y tinta, Salvia, Atardecer, Grafito y Noche.
 Se está explorando una familia de ambientes oscuros.
 
 ## Plan pendiente (ya aprobado)

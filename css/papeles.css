@@ -97,3 +97,5 @@ body.curling .curl-hot { opacity: 0; }
 body.cab-focus .curl-hot { display: none; }
 @media (pointer: coarse) { .curl-hot { width: 48px; height: 48px; } }
 @media print { .curl-hot, #curl { display: none !important; } }
+/* la esquina vive sobre la hoja (clara u oscura): una pastilla propia para que se lea siempre */
+.curl-hot.g { background: rgb(24 24 30 / .78); color: #f4f4f8; box-shadow: 0 2px 8px rgb(0 0 0 / .35), 0 0 0 1px rgb(255 255 255 / .22) inset; }

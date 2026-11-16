@@ -14,9 +14,9 @@ export const PALETTES = {
 export const BACKGROUNDS = [['dots', 'Puntos que reaccionan'], ['aurora', 'Aurora'], ['pastel', 'Aurora pastel sobre papel'], ['grain', 'Grano de papel'], ['plain', 'Liso']];
 export const MATERIALS = [['frost', 'Esmerilado'], ['smoke', 'Ahumado'], ['lacre', 'Teñido de acento'], ['vellum', 'Papel vegetal']];
 
-// Mi diseño (constructor): hoja protagonista, barra a la izquierda, paleta Grafito y sello editada, puntos, vidrio esmerilado fino
+// Mi diseño: hoja protagonista, barra a la izquierda, ambiente «Carbón» (casi negro, acento claro), puntos, vidrio esmerilado fino
 export const DEFAULT_THEME = {
-  pal: 'P7', custom: { accent: '#0033ff', bg: '#ccccff', paper: '#ffffff', accent2: '#656161' },
+  pal: 'P7', custom: { accent: '#ececf2', bg: '#0d0d10', paper: '#f1ecdf', ink: '#ececf2', accent2: '#9a9aa6' },
   bg: 'dots', aurO: 100, grain: 100,
   mat: 'frost', thick: 0, blur: 5, edge: false, radius: 15,
   prim: 'B01', sec2: 'B12', ripple: true, tog: 'T3', sld: 'L4',
@@ -104,7 +104,7 @@ export function applyTheme(theme) {
   // (en oscuro hace falta más: debajo puede pasar una hoja blanca y el texto claro se perdería)
   const ap = Math.max(g.a, dark || theme.mat === 'smoke' ? 0.82 : 0.58);
   set('--g-a-panel', Math.min(0.95, ap).toFixed(3)); set('--g-blur-panel', Math.max(g.blur, 14) + 'px');
-  const ptint = theme.mat === 'frost' ? (dark ? '#232842' : '#ffffff') : g.tint;
+  const ptint = theme.mat === 'frost' ? (dark ? '#25252b' : '#ffffff') : g.tint;
   set('--g-tint-panel', hexToRgb(ptint).join(' '));
   set('--g-text-panel', bestInk(mix(g.back, ptint, Math.min(0.95, ap))));
   set('--r', theme.radius + 'px'); set('--fs', theme.fs + 'px');
