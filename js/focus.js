@@ -3,7 +3,7 @@
 import { $ } from './util.js';
 import { createFocus3D, webglOk, TEX_W_PX, LINE_DELAY } from './focus3d.js';
 
-export function setupFocus({ writer, toast, animOn, refit }) {
+export function setupFocus({ writer, toast, animOn, refit, S }) {
   const fx = $('#focus-fx'), exit = $('#focus-exit'), btn = $('#btn-focus');
   let f3 = null, use3d = false, texBoost = false;
   let on = false, raf = 0, lx = 0, ly = 0, tx = 0, ty = 0, rx = 300, init = false, hideT = 0;
@@ -41,10 +41,10 @@ export function setupFocus({ writer, toast, animOn, refit }) {
       try {
         const rect = sheetRect(), clip = scrollRect(); // dónde está la hoja normal, antes de cambiarle el tamaño
         const w = writer(); if (w) { w.noCaret = true; w.lineDelay = LINE_DELAY; }
-        f3 = f3 || createFocus3D({ writer, animOn, viewFactor: () => vf });
+        f3 = f3 || createFocus3D({ writer, animOn, viewFactor: () => vf, S });
         await f3.start({ rect, clip, dur: 1.35 }); use3d = true;
-        // la hoja 3D ya está encima y es igual a la normal: se esconde la normal y se pasa a la textura grande
-        setTimeout(() => { if (!on || !use3d) return; document.body.classList.add('f3-hide'); texBoost = true; refit?.(); }, 300);
+        // la hoja 3D ya se dibujó y es igual a la normal: se esconde la normal en el mismo instante y se pasa a la textura grande
+        document.body.classList.add('f3-hide'); texBoost = true; refit?.();
       } catch (e) { console.warn('Modo foco 3D no disponible, uso la luz simple.', e); const w = writer(); if (w) { w.noCaret = false; w.lineDelay = 0; } }
     }
     if (!on) { moving = false; return; }
@@ -63,8 +63,11 @@ export function setupFocus({ writer, toast, animOn, refit }) {
       use3d = false;
       // se mide dónde va a quedar la hoja normal (con su tamaño de siempre) y la 3D viaja hasta ahí
       texBoost = false; refit?.(); const rect = sheetRect(), clip = scrollRect(); texBoost = true; refit?.();
-      await f3.stop({ rect, clip, dur: 1.0 });
-      texBoost = false; refit?.(); document.body.classList.remove('f3-hide'); const w = writer(); if (w) { w.noCaret = false; w.lineDelay = 0; }
+      await f3.stop({ rect, clip, dur: 1.0, beforeHide: async () => {
+        // la hoja normal vuelve primero y la 3D se apaga recién cuando ya está dibujada
+        texBoost = false; refit?.(); document.body.classList.remove('f3-hide'); const w = writer(); if (w) { w.noCaret = false; w.lineDelay = 0; }
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      } });
     }
     $('#cap')?.focus({ preventScroll: true });
     moving = false;
@@ -77,5 +80,10 @@ export function setupFocus({ writer, toast, animOn, refit }) {
   exit.addEventListener('click', leave);
   document.addEventListener('pointermove', showExit, { passive: true });
   document.addEventListener('pointerdown', showExit, { passive: true });
-  return { toggle, leave, isOn: () => on, setView(i) { vf = [1, 1.5, 0.72][i] ?? 1; f3?.setView(vf); }, wantsTexture: () => texBoost, textureCssW: () => Math.round(TEX_W_PX / Math.min(window.devicePixelRatio || 1, 3)) };
+  // prepara el modo foco 3D en segundo plano (carga la librería, compila las luces) para que entrar sea instantáneo
+  let prepared = false;
+  const prepare = () => { if (prepared || !webglOk()) return; prepared = true; f3 = f3 || createFocus3D({ writer, animOn, viewFactor: () => vf, S }); f3.prepare().catch(() => { prepared = false; }); };
+  btn?.addEventListener('pointerenter', prepare); btn?.addEventListener('focus', prepare); btn?.addEventListener('touchstart', prepare, { passive: true });
+  if ('requestIdleCallback' in window) setTimeout(() => requestIdleCallback(prepare, { timeout: 4000 }), 6000);
+  return { toggle, leave, isOn: () => on, is3d: () => on && use3d && !!f3, turn3d: (src, dst, change) => (f3 && on && use3d ? f3.turn(src, dst, change) : change()), setView(i) { vf = [1, 1.5, 0.72][i] ?? 1; f3?.setView(vf); }, wantsTexture: () => texBoost, textureCssW: () => Math.round(TEX_W_PX / Math.min(window.devicePixelRatio || 1, 3)) };
 }

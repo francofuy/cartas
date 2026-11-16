@@ -12,6 +12,14 @@ import { drawPaper } from './paper.js';
 
 const el = (c) => { const e = document.createElement('div'); e.className = c; return e; };
 
+export function classify(a, b) {
+  if (!a || !b) return null;
+  if (a.sheet === b.sheet) return a.side === 'front' && b.side === 'back' ? 'A' : a.side === 'back' && b.side === 'front' ? 'A-' : null;
+  if (b.sheet === a.sheet + 1) return a.side === 'back' && b.side === 'front' ? 'B' : a.side === 'front' && b.side === 'front' ? 'C' : null;
+  if (b.sheet === a.sheet - 1) return a.side === 'front' && b.side === 'back' ? 'B-' : a.side === 'front' && b.side === 'front' ? 'C-' : null;
+  return null;
+}
+
 // h = { writer(), S(), animOn(), sound, isMobile() }
 export function createTurner(h) {
   const wrap = () => $('.sheet-wrap');
@@ -105,13 +113,6 @@ export function createTurner(h) {
     } catch (e) {
       console.warn('Giro de hoja', e); const w2 = wrap(); w2?.querySelector('.fx')?.remove(); const sh = $('#sheet'); if (sh) sh.style.visibility = ''; const b = w2 && $('.bind', w2); if (b) b.style.opacity = ''; change();
     } finally { running = false; }
-  }
-  function classify(a, b) {
-    if (!a || !b) return null;
-    if (a.sheet === b.sheet) return a.side === 'front' && b.side === 'back' ? 'A' : a.side === 'back' && b.side === 'front' ? 'A-' : null;
-    if (b.sheet === a.sheet + 1) return a.side === 'back' && b.side === 'front' ? 'B' : a.side === 'front' && b.side === 'front' ? 'C' : null;
-    if (b.sheet === a.sheet - 1) return a.side === 'front' && b.side === 'back' ? 'B-' : a.side === 'front' && b.side === 'front' ? 'C-' : null;
-    return null;
   }
   return { turn, updateNeighbor, isTurning: () => running };
 }

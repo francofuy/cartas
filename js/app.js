@@ -432,7 +432,7 @@ let refsApi = null, cajonApi = null, papersApi = null, curlApi = null, lettersAp
 const animOn = () => !!(THEME && THEME.anim) && !reduceMotion();
 
 // Pasar de una cara a otra se anima como en un cuaderno con espiral (ver js/hojas.js): la hoja gira alrededor del espiral o la cámara se desliza a la página de al lado.
-const turnFace = (change, src, dst) => (turner ? turner.turn(src, dst, change) : change());
+const turnFace = (change, src, dst) => (focusApi?.is3d() ? focusApi.turn3d(src, dst, change) : turner ? turner.turn(src, dst, change) : change());
 function goPage(p) {
   const L = writer.layout;
   p = clamp(p, 0, L.pages - 1);
@@ -906,7 +906,7 @@ async function init() {
     onOpenDialog: () => { lastDeletedVersion = null; renderVersions(); },
     onFormat: () => { if (writer) { writer.cssW = 0; fit(); } },
   });
-  focusApi = setupFocus({ writer: () => writer, toast, animOn, refit: () => fit() });
+  focusApi = setupFocus({ writer: () => writer, toast, animOn, refit: () => fit(), S: () => S });
   turner = createTurner({ writer: () => writer, S: () => S, animOn, sound, isMobile });
   cuadernosApi = setupCuadernos({
     lettersApi: () => lettersApi, writer: () => writer, S: () => S, animOn, toast,

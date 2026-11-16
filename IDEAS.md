@@ -70,3 +70,6 @@ El espiral queda quieto y la hoja gira alrededor de él. Dar vuelta (frente → 
 
 ### Espiral en el modo foco (hecho, js/focus3d.js)
 En el modo foco 3D el espiral es de verdad: aros de metal que siguen la curva de la hoja (y se enrollan con ella), agujeros en el borde, sombra de contacto sobre el papel y sombras proyectadas por la luz en V (spot con mapa de sombras). Va del lado que corresponde a la cara (izquierda en el frente, derecha en el dorso). Si en una computadora floja se siente pesado, se puede apagar el mapa de sombras (renderer.shadowMap.enabled).
+
+### Foco: entrada sin parpadeo y giros de hoja en 3D (hecho, js/focus3d.js)
+La escena 3D se prepara antes (al acercar el mouse al botón Foco o cuando la app está ociosa): librería, shaders y texturas. Al entrar, el primer cuadro 3D se dibuja antes de mostrarse y la hoja normal se esconde en el mismo instante; al salir, vuelve primero la hoja normal y recién después se apaga la 3D. Dentro del foco, dar vuelta y hoja nueva giran la hoja en 3D alrededor del espiral (la cámara se corre de una página a la otra), con el mismo criterio que la vista normal.

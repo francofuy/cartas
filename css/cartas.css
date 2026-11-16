@@ -119,7 +119,7 @@ body.f3-hide #sheet { visibility: hidden; }
 @media (min-width: 900px) and (max-width: 1180px) { #sealed-btn .t { display: none; } #sealed-btn { padding: 0 12px; } }
 
 /* modo foco en 3D: la hoja de papel real bajo una luz en V, a pantalla completa */
-#focus3d { position: fixed; inset: 0; z-index: 4; opacity: 0; transition: opacity 260ms ease; touch-action: none; overflow: hidden; pointer-events: none; }
+#focus3d { position: fixed; inset: 0; z-index: 4; opacity: 0; touch-action: none; overflow: hidden; pointer-events: none; }
 #focus3d.on { opacity: 1; }
 #focus3d[hidden] { display: none; }
 #focus3d canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: auto; }
@@ -217,4 +217,5 @@ body.mesa-on #scroller, body.mesa-on .dock, body.mesa-on .stage-bar, body.mesa-o
 body.mesa-on .nbr, body.focus .nbr { opacity: 0; }
 @media print { .nbr, .fx { display: none !important; } }
 /* en el modo foco 3D el espiral lo dibuja la escena, con la luz */
-body.f3-hide .sheet-wrap .bind, body.f3-hide .sheet-wrap .nbr { visibility: hidden; }
+body.f3-hide .sheet-wrap .bind { visibility: hidden; }
+body.f3-hide .sheet-wrap .nbr { opacity: 0; transition: opacity 280ms ease; }

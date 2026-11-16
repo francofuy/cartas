@@ -6,6 +6,8 @@
 // three.js se carga solo al entrar al modo foco (vendor/three.min.js) y queda guardado para usarlo sin conexión.
 import { $ } from './util.js';
 import { PW as W, PH as H } from './format.js';
+import { drawPaper } from './paper.js';
+import { classify } from './hojas.js';
 
 // Valores elegidos en el editor de luz.
 export const LOOK = {
@@ -52,7 +54,7 @@ float lightMask( int i ) {
 // h = { writer(), animOn() }
 export function createFocus3D(h) {
   let T = null, ready = false, running = false, raf = 0, texDirty = true;
-  let gW = 0, gH = 0, mesh, barEnv = null;
+  let gW = 0, gH = 0, mesh, barEnv = null, bumpTex = null, compiled = false, tn = null, offN = 0, dOffNow = 0;
   let renderer, scene, camera, group, geo, base, tex, spot, halo, amb, flat, host, glowEl, vigEl, dimEl, canvasEl;
   let u = 0, uTarget = 0, uDur = 1.3, onArrive = null, pose0 = { d: 300, tx: 0, ty: LOOK.escena.camY }, zoomNow = LOOK.escena.zoom / 100, zoomTarget = zoomNow;
   const U = {}; const rows = []; const NX = 25; let NY = 480;
@@ -203,7 +205,7 @@ export function createFocus3D(h) {
   let aoTex = null;
   function placeRings(penY, e, side) {
     if (!ringMeshes.length) return;
-    const sgn = side === 'back' ? 1 : -1, ex = sgn * W / 2, inn = -sgn, vis = smooth(0.5, 1, e);
+    const sgn = side === 'back' ? 1 : -1, ex = sgn * W / 2, inn = -sgn, vis = 1; // el espiral ya está desde el primer cuadro: coincide con el de la hoja normal
     const lerp = (a, b, t) => a + (b - a) * t;
     for (let i = 0; i < ringN; i++) {
       const jf = ((i + 0.5) / ringN) * (NY - 1), j0 = Math.floor(jf), f = jf - j0, a = rows[j0], b = rows[Math.min(NY - 1, j0 + 1)];
@@ -229,7 +231,7 @@ export function createFocus3D(h) {
     tex = new T.CanvasTexture(h.writer().cv); tex.encoding = T.sRGBEncoding; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
     const bc = document.createElement('canvas'); bc.width = 512; bc.height = 724; const bx = bc.getContext('2d'), bimg = bx.createImageData(512, 724);
     for (let i = 0; i < bimg.data.length; i += 4) { const v = 128 + (Math.random() - 0.5) * 40; bimg.data[i] = bimg.data[i + 1] = bimg.data[i + 2] = v; bimg.data[i + 3] = 255; } bx.putImageData(bimg, 0, 0);
-    const mat = new T.MeshStandardMaterial({ map: tex, bumpMap: new T.CanvasTexture(bc), bumpScale: 0.12, roughness: 0.92, metalness: 0, side: T.DoubleSide });
+    const mat = new T.MeshStandardMaterial({ map: tex, bumpMap: (bumpTex = new T.CanvasTexture(bc)), bumpScale: 0.12, roughness: 0.92, metalness: 0, side: T.DoubleSide });
     Object.assign(U, { uLA: { value: [new T.Vector4(), new T.Vector4()] }, uLB: { value: [new T.Vector4(), new T.Vector4()] }, uLC: { value: [new T.Vector4(), new T.Vector4()] }, uLD: { value: [new T.Vector4(), new T.Vector4()] }, uCore: { value: new T.Vector2(0, -8) } });
     patchMat(mat);
     mesh = new T.Mesh(geo, mat); group = new T.Group(); group.add(mesh); scene.add(group);
@@ -270,10 +272,13 @@ export function createFocus3D(h) {
         if (Math.abs(c.y - lastTy) > 2.5) ret = reduce ? null : { t: 0, x0: pen.x, y0: pen.y };
         lastTy = c.y;
         if (ret) { ret.t += dt / 0.13; const uu = Math.min(1, ret.t), v = uu - 1, k2 = 1 + 2.4 * v * v * v + 1.4 * v * v; pen.x = ret.x0 + (c.x - ret.x0) * k2; pen.y = ret.y0 + (c.y - ret.y0) * k2; if (uu >= 1) ret = null; }
-        else { const k = reduce ? 1 : 1 - Math.pow(0.0009, dt); pen.x += (c.x - pen.x) * k; pen.y += (c.y - pen.y) * k; }
+        else { const k = reduce ? 1 : 1 - Math.pow(tn ? 0.04 : 0.0009, dt); pen.x += (c.x - pen.x) * k; pen.y += (c.y - pen.y) * k; }
       }
     }
     last = now;
+    const wl = w.layout, ff = wl && wl.faces[w.page], side = ff ? ff.side : 'front', targetOff = side === 'back' ? -W : 0;
+    // las páginas del cuaderno abierto: el frente está a la derecha del espiral y el dorso a la izquierda; la cámara se corre de una a otra con suavidad
+    offN += (targetOff - offN) * (reduce ? 1 : 1 - Math.pow(tn ? 0.04 : 0.0009, dt)); const dOff = targetOff - offN; dOffNow = dOff;
     // avance de la transición de entrada/salida
     if (u !== uTarget) { u = reduce ? uTarget : (uTarget > u ? Math.min(uTarget, u + dt / uDur) : Math.max(uTarget, u - dt / uDur)); if (u === uTarget && onArrive) { const f = onArrive; onArrive = null; f(); } }
     zoomNow += (zoomTarget - zoomNow) * (reduce ? 1 : 1 - Math.pow(0.002, dt));
@@ -281,10 +286,12 @@ export function createFocus3D(h) {
     if (texDirty) { tex.needsUpdate = true; texDirty = false; }
     const lx = pen.x - W / 2, ly = H / 2 - pen.y;
     deform(ly, e);
-    { const wl = w.layout, ff = wl && wl.faces[w.page]; placeRings(ly, e, ff ? ff.side : 'front'); }
+    placeRings(ly, e, side);
     const yaw = -(lx / (W / 2)) * 0.16 * P.yaw * e, roll = T.MathUtils.clamp((pen.x - prevX) * -0.0009 * 5.1, -0.05, 0.05) * P.yaw * 6 * e; prevX = pen.x;
     group.rotation.set(0, yaw, roll);
     group.position.set(lx, ly, 0).applyEuler(group.rotation).negate().multiplyScalar(e); // la punta queda siempre en el origen
+    group.position.x += dOff * e;
+    if (tn) stepTurn(dt, dOff);
     const dEnd = endDist(), d = Math.exp(lerp(Math.log(pose0.d), Math.log(dEnd), e)), el = lerp(0, T.MathUtils.degToRad(P.elev), e), tx = lerp(pose0.tx, 0, e), ty = lerp(pose0.ty, LOOK.escena.camY, e);
     camera.position.set(tx, ty + d * Math.sin(el), d * Math.cos(el)); camera.lookAt(tx, ty, 0); camera.updateMatrixWorld();
     applyLight(now / 1000, e);
@@ -292,31 +299,100 @@ export function createFocus3D(h) {
     raf = requestAnimationFrame(frame);
   }
 
+
+  /* ---------- pasar las hojas en 3D, alrededor del espiral (mismo movimiento que en la vista normal, ver js/hojas.js) ---------- */
+  const TEXPPM = 1100 / 210;
+  const faceCanvas = (idx) => { const c = document.createElement('canvas'); h.writer().renderPageTo(c, idx, TEXPPM); return c; };
+  const blankCanvas = () => { const c = document.createElement('canvas'); c.width = Math.round(W * TEXPPM); c.height = Math.round(H * TEXPPM); drawPaper(c.getContext('2d'), TEXPPM, h.S().paper); return c; };
+  const flipped = (src) => { const c = document.createElement('canvas'); c.width = src.width; c.height = src.height; const x = c.getContext('2d'); x.translate(c.width, 0); x.scale(-1, 1); x.drawImage(src, 0, 0); return c; };
+  function matFor(canvas) {
+    const t = new T.CanvasTexture(canvas); t.encoding = T.sRGBEncoding; t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    const m = new T.MeshStandardMaterial({ map: t, bumpMap: bumpTex, bumpScale: 0.12, roughness: 0.92, metalness: 0, side: T.DoubleSide }); patchMat(m); return m;
+  }
+  async function turn(src, dst, change) {
+    const kind = classify(src, dst), reduce = !h.animOn();
+    if (!kind || !running || tn || reduce || u < 1) { change(); return; }
+    const w = h.writer(), L = w.layout, blank = blankCanvas();
+    const cv = (s, side) => { const idx = s >= 0 ? L.sheets[s]?.[side] : null; return idx != null ? faceCanvas(idx) : blank; };
+    const s = src.sheet, t = dst.sheet, pages = []; let leaf = null;
+    // qué se ve (misma idea que en la vista normal): la hoja que gira, la que queda debajo y la de la izquierda
+    if (kind === 'A') { pages.push([-W, cv(s - 1, 'back')], [0, cv(s + 1, 'front')]); leaf = { f: cv(s, 'front'), b: cv(s, 'back'), a0: 0, a1: -180 }; }
+    else if (kind === 'A-') { pages.push([-W, cv(s - 1, 'back')], [0, cv(s + 1, 'front')]); leaf = { f: cv(s, 'front'), b: cv(s, 'back'), a0: -180, a1: 0 }; }
+    else if (kind === 'B') { pages.push([-W, cv(s, 'back')], [0, cv(s + 1, 'front')]); }
+    else if (kind === 'B-') { pages.push([-W, cv(t, 'back')], [0, cv(s, 'front')]); }
+    else if (kind === 'C') { pages.push([-W, cv(s - 1, 'back')], [0, cv(t, 'front')]); leaf = { f: cv(s, 'front'), b: cv(s, 'back'), a0: 0, a1: -180 }; }
+    else { pages.push([-W, cv(t - 1, 'back')], [0, cv(s, 'front')]); leaf = { f: cv(t, 'front'), b: cv(t, 'back'), a0: -180, a1: 0 }; }
+    const props = [], mats = [];
+    for (const [off, c] of pages) { const m = matFor(c); mats.push(m); const root = new T.Object3D(), me = new T.Mesh(geo, m); me.position.z = -0.5; root.add(me); scene.add(root); props.push({ root, off }); }
+    let L2 = null;
+    if (leaf) {
+      const mF = matFor(leaf.f), mB = matFor(flipped(leaf.b)); mats.push(mF, mB);
+      const root = new T.Object3D(), pivot = new T.Object3D(), me = new T.Mesh(geo, mF); pivot.position.x = -W / 2; me.position.x = W / 2; pivot.add(me); root.add(pivot); scene.add(root);
+      props.push({ root, off: 0 }); L2 = { pivot, me, mF, mB, a0: leaf.a0, a1: leaf.a1 };
+    }
+    mesh.visible = false; if (aoMesh) aoMesh.visible = false;
+    h.sound?.fold?.();
+    change(); // se cambia de cara de verdad (la hoja de verdad queda escondida hasta que termine el giro)
+    await new Promise((res) => { tn = { props, mats, leaf: L2, t: 0, dur: leaf ? 0.9 : 0.62, res, age: 0 }; });
+  }
+  const tEase = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+  function stepTurn(dt, dOff) {
+    tn.t = Math.min(1, tn.t + dt / tn.dur); tn.age += dt;
+    const base = group.position.x - dOff * 1;
+    for (const p of tn.props) { p.root.position.set(base + (p.off - offN) , group.position.y, group.position.z); p.root.rotation.copy(group.rotation); }
+    if (tn.leaf) {
+      const lf = tn.leaf, k = tEase(tn.t), a = lf.a0 + (lf.a1 - lf.a0) * k;
+      lf.pivot.rotation.y = a * Math.PI / 180; lf.me.position.z = 0.25 + 7 * Math.sin(Math.PI * k); // se levanta un poco al cruzar el espiral
+      lf.me.material = Math.abs(a) > 90 ? lf.mB : lf.mF; // pasados los 90° se ve el dorso (la imagen ya está espejada para que se lea bien)
+    }
+    // termina cuando el giro acabó y la cámara ya llegó a la nueva página (o si tarda demasiado)
+    if ((tn.t >= 1 && Math.abs(dOff) < 0.8) || tn.age > 3) {
+      const done = tn.res; mesh.visible = true; if (aoMesh) aoMesh.visible = true;
+      for (const p of tn.props) scene.remove(p.root);
+      for (const m of tn.mats) { if (m.map) m.map.dispose(); m.dispose(); }
+      tn = null; done();
+    }
+  }
+
   return {
     ready: () => ready,
+    // prepara todo antes (three.js, shaders, texturas) para que al entrar al foco no haya que esperar
+    async prepare() {
+      if (!ready) await init();
+      if (!compiled) { try { renderer.compile(scene, camera); renderer.initTexture(tex); renderer.initTexture(bumpTex); } catch { /* sigue */ } compiled = true; }
+    },
     // arranca desde la hoja normal (rect = su rectángulo en pantalla; clip = la zona visible de la hoja)
     async start({ rect, clip, dur } = {}) {
-      if (!ready) await init();
+      await this.prepare();
       if (gW !== W || gH !== H) { geo.dispose(); geo = new T.PlaneGeometry(W, H, NX - 1, NY - 1); base = geo.attributes.position.array.slice(); gW = W; gH = H; mesh.geometry = geo; elKey = ''; buildRings(); } // la hoja cambió de tamaño (A4 / A5)
-      running = true; first = true; ret = null; texDirty = true; last = performance.now(); u = 0; uTarget = 1; uDur = dur || 1.3; onArrive = null;
+      running = true; first = true; ret = null; tn = null; mesh.visible = true; texDirty = true; last = performance.now(); u = 0; uTarget = 1; uDur = dur || 1.3; onArrive = null;
+      { const fw = h.writer().layout?.faces[h.writer().page]; offN = fw && fw.side === 'back' ? -W : 0; }
       zoomNow = zoomTarget = LOOK.escena.zoom / 100 * (h.viewFactor?.() || 1);
       host.hidden = false; resize(); setPose0(rect || { left: innerWidth * 0.2, top: 0, width: innerWidth * 0.6, height: innerWidth * 0.6 * H / W });
       if (clip) { canvasEl.style.transition = 'none'; canvasEl.style.clipPath = clipOf(clip); void canvasEl.offsetWidth; canvasEl.style.transition = `clip-path ${uDur}s cubic-bezier(.45,0,.2,1)`; }
       h.writer().onDraw = () => { texDirty = true; };
-      if (!raf) raf = requestAnimationFrame(frame);
-      requestAnimationFrame(() => { host.classList.add('on'); if (clip) canvasEl.style.clipPath = 'inset(0px)'; });
+      // el primer cuadro se dibuja ANTES de mostrar el lienzo: no queda un instante con la hoja normal sola
+      host.style.transition = 'none'; frame(performance.now());
+      host.classList.add('on');
+      if (clip) requestAnimationFrame(() => { canvasEl.style.clipPath = 'inset(0px)'; });
     },
     // vuelve a la hoja normal (rect/clip = donde quedará) y recién entonces se apaga
-    stop({ rect, clip, dur } = {}) {
+    stop({ rect, clip, dur, beforeHide } = {}) {
       return new Promise((done) => {
         if (!running) { done(); return; }
         if (rect) setPose0(rect);
         uDur = dur || 1.0; uTarget = 0;
         if (clip) { canvasEl.style.transition = `clip-path ${uDur}s cubic-bezier(.45,0,.2,1)`; canvasEl.style.clipPath = clipOf(clip); }
-        const fin = () => { running = false; cancelAnimationFrame(raf); raf = 0; const w = h.writer(); if (w) w.onDraw = null; host.classList.remove('on'); setTimeout(() => { if (!running && host) host.hidden = true; }, 360); done(); };
+        const fin = async () => {
+          running = false; cancelAnimationFrame(raf); raf = 0; const w = h.writer(); if (w) w.onDraw = null;
+          if (tn) { mesh.visible = true; if (aoMesh) aoMesh.visible = true; for (const p of tn.props) scene.remove(p.root); const r = tn.res; tn = null; r(); }
+          try { await beforeHide?.(); } catch { /* sigue */ } // la hoja normal vuelve a estar debajo antes de apagar la 3D
+          host.classList.remove('on'); host.hidden = true; done();
+        };
         onArrive = fin; if (u === 0) { onArrive = null; fin(); }
       });
     },
+    turn, isTurning: () => !!tn,
     setView(f) { zoomTarget = LOOK.escena.zoom / 100 * f; }, // 1 = ancho, >1 = más lejos, <1 = más cerca
     isRunning: () => running,
   };
