@@ -1,0 +1,30 @@
+# Ideas guardadas (todavía sin elegir)
+
+Cosas que se hablaron y quedaron para decidir más adelante. No están en la app.
+
+## Dónde viven las cartas cerradas
+Hoy: una lista dentro de «Mis cartas», con un número en el botón de arriba a la izquierda (idea D).
+Maquetas: https://claude.ai/artifact/FQnRuGign6NnEbxUFduYf2
+
+- **A · Panel del dock.** Un botón nuevo abre un panel de vidrio con los sobres en lista. Tapa un poco la hoja mientras está abierto.
+- **B · Pestaña «Cartas».** Tercera pestaña junto a Escribir y Mi letra, con los sobres grandes e inclinados sobre el escritorio. No tapa nada.
+- **C · Sobres en el margen del escritorio.** Apoyados a la derecha, afuera de la hoja; se levantan al pasar el cursor. En ventanas angostas queda solo un contador.
+- Se pueden combinar (por ejemplo B más un contador arriba, y C solo en pantallas anchas).
+- Descartadas: la caja 3D y el cajón en la esquina (no convencieron).
+
+## Mejoras de la interfaz
+Maquetas: https://claude.ai/artifact/RqB3oS4xeErSzoUyMeL9Ug
+
+1. **Modo foco.** Al escribir, la barra de arriba, el dock y los botones se atenúan; vuelven al llevar el mouse a un borde.
+2. **Selector de ambiente dentro de la app.** El de noche podría activarse solo al anochecer.
+3. **Atajos de teclado visibles** al pasar el cursor por los botones del dock (los atajos todavía no existen).
+4. **Mesa con textura** (lino, madera clara, corcho) en lugar de los puntos, y hoja con sombra más realista.
+5. **Títulos con más carácter** (otra tipografía para los títulos de los paneles, Inter para los botones).
+6. **Botón Imprimir con animación** (una hoja se desliza hacia una bandeja antes de abrir la impresión).
+
+## Ambientes de color
+Hoy: Índigo (escritorio #ccccff, principal #0033ff). Alternativas vistas: Papel y tinta, Salvia, Atardecer, Grafito y Noche.
+Se está explorando una familia de ambientes oscuros.
+
+## Plan pendiente (ya aprobado)
+Luz y tinta húmeda, portalápices; tachones, formato a mano y firma; fotos y cintas, sobre impreso; papel ya rayado con calibración; mesa 3D.
