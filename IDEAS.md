@@ -35,3 +35,11 @@ Segunda ronda (pedido: V más abierta, origen más abajo, punta sin filo, como l
 
 ## Hoja de máquina de escribir en el modo foco (prototipo mostrado, sin elegir)
 Idea: cámara fija con la lapicera siempre en el mismo punto de la pantalla; la hoja se desliza a izquierda/derecha según dónde se escribe y sube en cada Enter. Como en una máquina de escribir, se enrolla sobre un rodillo y cae hacia atrás (arco sin estirar el papel). Luz: linterna cálida un poco más abajo de las letras. Prototipo aparte con controles de radio del rodillo, cuánto se enrolla, altura de cámara y de la luz. En la app haría falta WebGL (three.js, empaquetado para funcionar sin conexión). La versión anterior (hoja cóncava y combada) se descartó.
+
+### Valores elegidos para el modo foco con hoja de máquina de escribir
+(los que se ven bien en el prototipo; usarlos como base si se lleva a la app)
+- Radio del rodillo 38 mm · Cuánto se enrolla 210° · Rigidez del papel 55 (muy flexible)
+- Altura de la cámara −10° · Distancia de la cámara 90 % · Giro al desplazarse 14 %
+- Distancia de la luz al papel 20 mm · Altura de la luz 160 (por encima) · Intensidad 90 % · Resplandor 10 %
+- Velocidad 14 letras/s · Rodillo oculto
+- Oscuridad del fondo: 65 % (nueva; oscurece lo que no ilumina la luz)
