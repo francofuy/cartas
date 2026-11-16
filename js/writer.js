@@ -119,10 +119,19 @@ export class Writer {
     p = clamp(p, 0, this.layout.pages - 1);
     if (p === this.page) return;
     this.page = p;
+    this.caretToPage();
     this.cachePageItems();
     this.inkDirty = true;
     this.emit();
     this.schedule();
+  }
+
+  // Al cambiar de cara, el cursor viene con vos: si estaba en otra cara, pasa al final de la que mirás (así escribís ahí y no en la que dejaste)
+  caretToPage() {
+    const L = this.layout, cur = L.caret[this.caret];
+    if (cur && cur.page === this.page) return;
+    for (let i = this.text.length; i >= 0; i--) if (L.caret[i] && L.caret[i].page === this.page) { this.caret = i; break; }
+    this.blinkOn = true; this._syncCap?.();
   }
 
   setCaret(k) {

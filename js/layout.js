@@ -115,12 +115,15 @@ export function layoutText(text, lib, S) {
 // índice de texto más cercano a un punto (en mm) de una hoja
 export function hitTest(layout, page, mmX, mmY) {
   const { G, lines, caret } = layout;
+  // el cursor tiene que quedar en la cara que se toca (no en la última del texto): si se toca debajo de lo escrito, va al final de esa cara
+  const pageEnd = () => { for (let i = caret.length - 1; i >= 0; i--) if (caret[i] && caret[i].page === page) return i; return caret.length - 1; };
   let row = Math.floor((mmY - G.top) / G.rowH);
   row = Math.max(0, Math.min(G.rows - 1, row));
   let ln = page * G.rows + row;
-  if (ln > layout.endLine) ln = layout.endLine;
+  const pageLast = Math.min(layout.endLine, (page + 1) * G.rows - 1);
+  if (ln > pageLast) ln = pageLast;
   const idxs = lines[ln];
-  if (!idxs || !idxs.length) return caret.length - 1;
+  if (!idxs || !idxs.length) return pageEnd();
   let best = idxs[0], bd = Infinity;
   for (const k of idxs) {
     const c = caret[k];
@@ -131,5 +134,5 @@ export function hitTest(layout, page, mmX, mmY) {
       if (d2 < bd) { bd = d2; best = k + 1; }
     }
   }
-  return best;
+  return caret[best] && caret[best].page === page ? best : pageEnd();
 }
