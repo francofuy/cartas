@@ -23,21 +23,26 @@ export function createTurner(h) {
   const sideImg = (sheet, side, blank) => { const L = h.writer().layout, idx = sheet >= 0 ? L.sheets[sheet]?.[side] : null; return idx != null ? faceImg(idx) : blank; };
 
   /* ---------- la página vecina, asomando del otro lado del espiral ---------- */
-  let nbrT = 0;
-  function updateNeighbor() {
-    clearTimeout(nbrT);
-    nbrT = setTimeout(() => {
-      const w = wrap(); if (!w || !h.writer().layout) return;
-      let n = $('.nbr', w); if (!n) { n = el('nbr'); n.setAttribute('aria-hidden', 'true'); w.append(n); }
-      const sc = $('#scroller'), room = (sc.clientWidth - cssW()) / 2 - 8, strip = Math.min(cssW() * 0.3, room);
-      if (h.isMobile() || strip < 36) { n.hidden = true; return; }
-      const L = h.writer().layout, f = L.faces[h.writer().page], back = f.side === 'back', blank = blankImg();
-      const img = back ? sideImg(f.sheet + 1, 'front', blank) : (f.sheet > 0 ? sideImg(f.sheet - 1, 'back', blank) : null);
-      n.hidden = false; n.dataset.side = back ? 'right' : 'left'; n.style.width = strip + 'px';
-      n.style.backgroundImage = img ? `url(${img})` : 'none'; n.style.backgroundSize = `${cssW()}px 100%`; n.style.backgroundPosition = back ? 'left top' : 'right top';
-      n.classList.toggle('cover', !img);
-    }, 260);
+  // La imagen nueva se precarga y se cambia recién cuando está lista (y solo si cambió): así la tira del costado no parpadea.
+  let nbrT = 0, nbrBusy = 0, lastUrl = '', lastKey = '';
+  async function renderNeighbor() {
+    const w = wrap(), wr = h.writer(); if (!w || !wr.layout) return;
+    const my = ++nbrBusy;
+    let n = $('.nbr', w); if (!n) { n = el('nbr'); n.setAttribute('aria-hidden', 'true'); n.hidden = true; w.append(n); }
+    const sc = $('#scroller'), room = (sc.clientWidth - cssW()) / 2 - 8, strip = Math.min(cssW() * 0.3, room);
+    if (h.isMobile() || strip < 36) { n.hidden = true; return; }
+    const L = wr.layout, f = L.faces[wr.page], back = f.side === 'back', blank = blankImg();
+    const img = back ? sideImg(f.sheet + 1, 'front', blank) : (f.sheet > 0 ? sideImg(f.sheet - 1, 'back', blank) : null);
+    const key = `${back ? 'r' : 'l'}|${strip}|${cssW()}|${img ? img.length : 0}`;
+    if (img && (img !== lastUrl || key !== lastKey)) { try { const im = new Image(); im.src = img; await im.decode(); } catch { /* sigue igual */ } }
+    if (my !== nbrBusy) return; // llegó un pedido más nuevo
+    n.style.transition = 'none';
+    n.hidden = false; n.dataset.side = back ? 'right' : 'left'; n.style.width = strip + 'px';
+    if (img !== lastUrl || n.style.backgroundImage === '') n.style.backgroundImage = img ? `url(${img})` : 'none';
+    n.style.backgroundSize = `${cssW()}px 100%`; n.style.backgroundPosition = back ? 'left top' : 'right top';
+    n.classList.toggle('cover', !img); lastUrl = img || ''; lastKey = key;
   }
+  function updateNeighbor() { clearTimeout(nbrT); nbrT = setTimeout(() => { if (!running) renderNeighbor(); }, 260); }
 
   /* ---------- el giro ---------- */
   const EZ = 'cubic-bezier(.4,.05,.25,1)';
@@ -90,13 +95,16 @@ export function createTurner(h) {
       if (under) { const sh = el('fxsh'); under.append(sh); anims.push(sh.animate([{ opacity: 0 }, { opacity: 0.5, offset: 0.45 }, { opacity: 0 }], { duration: dur, easing: 'ease-in-out', fill: 'both' })); }
       await Promise.all(anims.map((a) => a.finished.catch(() => {})));
       change();
-      // se deja el giro hasta que la hoja de verdad ya esté dibujada debajo
+      // el giro queda tapando hasta que la hoja de verdad esté dibujada y la tira de la vecina ya sea la nueva (así nada parpadea)
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      sheet.style.visibility = ''; if (bind) bind.style.opacity = ''; if (nbr) nbr.style.opacity = '';
+      for (let i = 0; i < 8 && wr.raf; i++) await new Promise((r) => requestAnimationFrame(r));
+      await renderNeighbor();
+      sheet.style.visibility = ''; if (bind) bind.style.opacity = ''; if (nbr) nbr.style.opacity = ''; const nn = $('.nbr', w); if (nn) nn.style.opacity = '';
+      await new Promise((r) => requestAnimationFrame(r));
       fx.remove(); w.style.perspective = ''; w.style.perspectiveOrigin = '';
     } catch (e) {
       console.warn('Giro de hoja', e); const w2 = wrap(); w2?.querySelector('.fx')?.remove(); const sh = $('#sheet'); if (sh) sh.style.visibility = ''; const b = w2 && $('.bind', w2); if (b) b.style.opacity = ''; change();
-    } finally { running = false; updateNeighbor(); }
+    } finally { running = false; }
   }
   function classify(a, b) {
     if (!a || !b) return null;
