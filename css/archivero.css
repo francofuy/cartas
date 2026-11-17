@@ -102,7 +102,7 @@ body.dragging-ref { cursor: grabbing; user-select: none; -webkit-user-select: no
 .note-head { flex-wrap: wrap; row-gap: 6px; }
 .note-head h2 { flex: 1 1 130px; min-width: 0; }
 .refc.is-ref .note-head h2 { flex-basis: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.note-tools { flex: none; flex-wrap: wrap; justify-content: flex-end; }
+.note-tools { flex: 0 1 auto; min-width: 0; max-width: 100%; flex-wrap: wrap; justify-content: flex-end; }
 .ref-view { flex: 1; min-height: 0; overflow: auto; border-radius: calc(var(--r) * .7); padding: 14px 16px; background: var(--fill); box-shadow: 0 0 0 1px var(--ring) inset; }
 .ref-view .txt { white-space: pre-wrap; font: var(--fs-ref, 17px)/1.6 var(--serif); text-wrap: pretty; }
 .ref-view canvas { display: block; max-width: 100%; }
