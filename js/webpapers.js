@@ -9,13 +9,14 @@ export const PROVIDERS = {
   pixabay: { label: 'Pixabay', key: true, url: 'https://pixabay.com/api/docs/', note: 'Imágenes de Pixabay. Pide una clave gratuita.' },
 };
 export const PER_PAGE = 24;
+const OV_PER_PAGE = 20; // Openverse no deja pedir más de 20 por página sin clave
 
 const strip = (h) => String(h || '').replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#039;/g, "'").trim();
 
 async function getJSON(url, headers) {
   let res;
   try { res = await fetch(url, headers ? { headers } : undefined); } catch { throw new Error('No pude conectarme. Revisá tu conexión (o si el servicio está bloqueado en esta red).'); }
-  if (res.status === 401 || res.status === 403) throw new Error('La clave no es válida o no tiene permiso. Revisala en ajustes.');
+  if (res.status === 401 || res.status === 403) throw new Error(headers ? 'La clave no es válida o no tiene permiso. Revisala en ajustes.' : 'El servicio rechazó el pedido (' + res.status + '). Probá con otro buscador.');
   if (res.status === 429) throw new Error('El servicio pide esperar un rato antes de buscar de nuevo (demasiados pedidos).');
   if (!res.ok) throw new Error(`El servicio respondió con un error (${res.status}).`);
   return res.json();
@@ -31,7 +32,7 @@ export async function search(provider, q, page, keys) {
   const enc = encodeURIComponent(q);
 
   if (provider === 'openverse') {
-    const d = await getJSON(`https://api.openverse.org/v1/images/?q=${enc}&page=${page}&page_size=${PER_PAGE}&mature=false`);
+    const d = await getJSON(`https://api.openverse.org/v1/images/?q=${enc}&page=${page}&page_size=${OV_PER_PAGE}&mature=false`);
     return {
       items: (d.results || []).map((r) => ({
         id: 'ov-' + r.id, thumb: r.thumbnail || r.url, full: r.url, fallback: r.thumbnail,

@@ -76,3 +76,9 @@ La escena 3D se prepara antes (al acercar el mouse al botón Foco o cuando la ap
 
 ### La barra de luz se aparta al pasar la hoja (hecho, js/focus3d.js)
 Al dar vuelta o pasar a otra hoja en el modo foco, la barra de metal (con la aleta) sube por encima del borde de arriba de la hoja y la luz en V baja a casi la mitad; la hoja espera 0,12 s para que la barra ya esté fuera. Cuando la hoja terminó de caer, la barra vuelve a su lugar y la luz a su fuerza. Así la hoja nunca atraviesa la barra. Si se quisiera que en vez de subir se desvanezca (idea 2), el cambio está en updateBar.
+
+### La barra como un solo bloque (hecho, js/focus3d.js)
+Al pasar una hoja en el foco, la barra con la aleta sube sola (0,3 s) mientras la hoja y la cámara esperan quietas; recién cuando está arriba cambia la cara y empieza el giro. La barra queda quieta arriba durante el giro y baja en diagonal, con la luz, a su lugar nuevo cuando la hoja ya cayó.
+
+### Buscador de hojas en internet (arreglado, js/webpapers.js)
+Openverse ya no deja pedir más de 20 resultados por página sin clave y respondía 401 (la app decía «la clave no es válida»). Ahora pide 20. Probado de punta a punta en Chromium: buscar, elegir y usar como hoja.

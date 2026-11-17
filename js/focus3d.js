@@ -54,7 +54,7 @@ float lightMask( int i ) {
 // h = { writer(), animOn() }
 export function createFocus3D(h) {
   let T = null, ready = false, running = false, raf = 0, texDirty = true;
-  let gW = 0, gH = 0, mesh, barEnv = null, bumpTex = null, compiled = false, tn = null, offN = 0, dOffNow = 0, barLift = 0;
+  let gW = 0, gH = 0, mesh, barEnv = null, bumpTex = null, compiled = false, tn = null, offN = 0, dOffNow = 0, barLift = 0, barHoldX = 0;
   let renderer, scene, camera, group, geo, base, tex, spot, halo, amb, flat, host, glowEl, vigEl, dimEl, canvasEl;
   let u = 0, uTarget = 0, uDur = 1.3, onArrive = null, pose0 = { d: 300, tx: 0, ty: LOOK.escena.camY }, zoomNow = LOOK.escena.zoom / 100, zoomTarget = zoomNow;
   const U = {}; const rows = []; const NX = 25; let NY = 480;
@@ -176,7 +176,7 @@ export function createFocus3D(h) {
     barGroup.visible = lampGroup.visible = vis > 0;
     // al pasar una hoja la barra se aparta: sube por encima del borde de arriba de la hoja y vuelve cuando la hoja ya cayó
     const lift = liftE() * Math.max(0, group.position.y + H / 2 + 20 - y), yy = y + lift;
-    barGroup.position.set(group.position.x, yy, zc); lampGroup.position.set(l.ax, yy, zc);
+    barGroup.position.set(group.position.x + (barHoldX - group.position.x) * liftE(), yy, zc); lampGroup.position.set(l.ax, yy, zc);
     const k = kelvin(Math.max(2200, l.temp + 500)), lit = (on ? B.slit / 100 : 0.04) * flick;
     slitMat.color.setRGB(Math.min(1, k[0] * lit + 0.1 * lit), Math.min(1, k[1] * lit + 0.08 * lit), Math.min(1, k[2] * lit));
     glowSpr.material.color.setRGB(k[0], k[1] * 0.92, k[2] * 0.8); glowSpr.material.opacity = on ? (B.glow / 100) * Math.min(1, 0.4 + B.slit / 160) * vis : 0;
@@ -294,7 +294,7 @@ export function createFocus3D(h) {
     group.rotation.set(0, yaw, roll);
     group.position.set(lx, ly, 0).applyEuler(group.rotation).negate().multiplyScalar(e); // la punta queda siempre en el origen
     group.position.x += dOff * e;
-    { const want = tn && tn.leaf && tn.t < 0.97 ? 1 : 0; barLift = want ? Math.min(1, barLift + dt / 0.2) : Math.max(0, barLift - dt / 0.3); }
+    { const want = tn && tn.leaf && tn.t < 0.97 ? 1 : 0; if (want && barLift === 0) barHoldX = group.position.x; barLift = want ? Math.min(1, barLift + dt / 0.3) : Math.max(0, barLift - dt / 0.38); }
     if (tn) stepTurn(dt, dOff);
     const dEnd = endDist(), d = Math.exp(lerp(Math.log(pose0.d), Math.log(dEnd), e)), el = lerp(0, T.MathUtils.degToRad(P.elev), e), tx = lerp(pose0.tx, 0, e), ty = lerp(pose0.ty, LOOK.escena.camY, e);
     camera.position.set(tx, ty + d * Math.sin(el), d * Math.cos(el)); camera.lookAt(tx, ty, 0); camera.updateMatrixWorld();
@@ -336,13 +336,15 @@ export function createFocus3D(h) {
     }
     mesh.visible = false; if (aoMesh) aoMesh.visible = false;
     h.sound?.fold?.();
-    change(); // se cambia de cara de verdad (la hoja de verdad queda escondida hasta que termine el giro)
-    await new Promise((res) => { tn = { props, mats, leaf: L2, t: 0, dur: leaf ? 0.9 : 0.62, res, age: 0, lead: leaf ? 0.12 : 0 }; });
+    if (!leaf) change(); // sin hoja que cruce: se cambia de cara ya (la hoja de verdad queda escondida hasta que termine el giro)
+    await new Promise((res) => { tn = { props, mats, leaf: L2, t: 0, dur: leaf ? 0.9 : 0.62, res, age: 0, change, wait: !!leaf }; });
   }
   const tEase = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
   function stepTurn(dt, dOff) {
-    if (tn.lead > 0) tn.lead -= dt; else tn.t = Math.min(1, tn.t + dt / tn.dur);
     tn.age += dt;
+    // con hoja que cruza: primero la barra se aparta (la hoja y la cámara esperan quietas) y recién ahí cambia la cara y empieza el giro
+    if (tn.wait) { if (liftE() >= 0.93 || tn.age > 1) { tn.wait = false; tn.change(); } }
+    else tn.t = Math.min(1, tn.t + dt / tn.dur);
     const base = group.position.x - dOff * 1;
     for (const p of tn.props) { p.root.position.set(base + (p.off - offN) , group.position.y, group.position.z); p.root.rotation.copy(group.rotation); }
     if (tn.leaf) {
@@ -351,7 +353,7 @@ export function createFocus3D(h) {
       lf.me.material = Math.abs(a) > 90 ? lf.mB : lf.mF; // pasados los 90° se ve el dorso (la imagen ya está espejada para que se lea bien)
     }
     // termina cuando el giro acabó y la cámara ya llegó a la nueva página (o si tarda demasiado)
-    if ((tn.t >= 1 && Math.abs(dOff) < 0.8 && barLift < 0.03) || tn.age > 3) {
+    if ((tn.t >= 1 && Math.abs(dOff) < 0.8 && barLift < 0.03) || tn.age > 4) {
       const done = tn.res; mesh.visible = true; if (aoMesh) aoMesh.visible = true;
       for (const p of tn.props) scene.remove(p.root);
       for (const m of tn.mats) { if (m.map) m.map.dispose(); m.dispose(); }
@@ -390,7 +392,7 @@ export function createFocus3D(h) {
         if (clip) { canvasEl.style.transition = `clip-path ${uDur}s cubic-bezier(.45,0,.2,1)`; canvasEl.style.clipPath = clipOf(clip); }
         const fin = async () => {
           running = false; cancelAnimationFrame(raf); raf = 0; const w = h.writer(); if (w) w.onDraw = null;
-          if (tn) { mesh.visible = true; if (aoMesh) aoMesh.visible = true; for (const p of tn.props) scene.remove(p.root); const r = tn.res; tn = null; r(); }
+          if (tn) { if (tn.wait) tn.change(); mesh.visible = true; if (aoMesh) aoMesh.visible = true; for (const p of tn.props) scene.remove(p.root); const r = tn.res; tn = null; r(); }
           try { await beforeHide?.(); } catch { /* sigue */ } // la hoja normal vuelve a estar debajo antes de apagar la 3D
           host.classList.remove('on'); host.hidden = true; done();
         };
