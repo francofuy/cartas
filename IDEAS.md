@@ -82,3 +82,6 @@ Al pasar una hoja en el foco, la barra con la aleta sube sola (0,3 s) mientras l
 
 ### Buscador de hojas en internet (arreglado, js/webpapers.js)
 Openverse ya no deja pedir más de 20 resultados por página sin clave y respondía 401 (la app decía «la clave no es válida»). Ahora pide 20. Probado de punta a punta en Chromium: buscar, elegir y usar como hoja.
+
+### Cerrar la carta: animación nueva (hecho, js/seal.js)
+Elegido en la página de alternativas: doblado «curvo con sombra» (cada franja se levanta, se curva y oscurece cerca del pliegue), velocidad lenta (2,4×, constante `K` en seal.js; `opts.speed` la cambia) y guardado «directo al botón»: el paquete encoge, se vuelve el sobre del botón con su puntito de lacre (colores del sobre y del lacre de cada carta) y viaja en arco a «Cerradas». El velo ahora es oscuro (Carbón) y no azul. Duración total ≈ 10 s; se salta con un toque, Esc o «Saltar». No elegidas (por si se quieren después): sobre que sube desde abajo, sobre en el escritorio con sello de metal, cinta con moño, lacre sobre el doblez.
