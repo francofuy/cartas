@@ -214,6 +214,8 @@ body.mesa-on #scroller, body.mesa-on .dock, body.mesa-on .stage-bar, body.mesa-o
 .sheet-wrap .nbr::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
 .sheet-wrap .nbr[data-side="left"]::after { background: linear-gradient(270deg, rgb(0 0 0 / .45), transparent 45%); }
 .sheet-wrap .nbr[data-side="right"]::after { background: linear-gradient(90deg, rgb(0 0 0 / .45), transparent 45%); }
+/* en la mesa solo se eligen cuadernos: lo demás se apaga (y sale del foco del teclado) */
+body.mesa-on #sealed-btn, body.mesa-on #seg, body.mesa-on .actions, body.mesa-on #sealed-pop { opacity: 0 !important; pointer-events: none !important; visibility: hidden; transition: opacity 380ms ease, visibility 0s 380ms; }
 body.mesa-on .nbr, body.focus .nbr { opacity: 0; }
 @media print { .nbr, .fx { display: none !important; } }
 /* en el modo foco 3D el espiral lo dibuja la escena, con la luz */

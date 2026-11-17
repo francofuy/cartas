@@ -945,7 +945,7 @@ async function init() {
   $$('.tab').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
   $$('.dock-btn[data-panel]').forEach((b) => b.addEventListener('click', () => togglePanel(b.dataset.panel)));
   document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === '.' && !document.querySelector('dialog[open]')) { e.preventDefault(); if ($('#btn-focus')?.offsetParent) focusApi?.toggle(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key === '.' && !document.querySelector('dialog[open]')) { if (cuadernosApi?.isOpen()) return; e.preventDefault(); if ($('#btn-focus')?.offsetParent) focusApi?.toggle(); return; }
     if (e.key === 'Escape' && focusApi?.isOn()) { e.preventDefault(); focusApi.leave(); return; }
     if (e.key !== 'Escape' || document.querySelector('dialog[open]')) return;
     if (lettersApi?.closePops()) return;

@@ -139,7 +139,7 @@ export function setupCuadernos(h) {
 
   async function openMesa() {
     if (busy || state !== 'write') return; busy = true;
-    const api = h.lettersApi(), w = h.writer(); api.saveActive();
+    const api = h.lettersApi(), w = h.writer(); api.closePops?.(); api.saveActive();
     const d = api.activeDraft(), r = h.sheetRect(); kw = r.width / mm(d.fmt).w;
     const info = openInfoFor(d);
     mesa.getAnimations().forEach((x) => x.cancel()); mesa.hidden = false; const mb = mesaBox();
@@ -212,6 +212,8 @@ export function setupCuadernos(h) {
     const id = api.activeId(); mount(null); await new Promise((res) => requestAnimationFrame(res)); await openBook(id);
   });
   $('#mesa-versions').addEventListener('click', () => h.lettersApi().openDialog());
+  // si en «Borradores y versiones» se borró o cambió algo, la mesa se arma de nuevo con lo que quedó
+  $('#versions')?.addEventListener('close', () => { if (state === 'mesa' && !busy) mount(null); });
 
   /* ---------- botones ---------- */
   function toggle() { if (state === 'write') openMesa(); else if (state === 'mesa') openBook(h.lettersApi().activeId()); }
