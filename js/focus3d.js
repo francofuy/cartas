@@ -113,20 +113,20 @@ export function createFocus3D(h) {
     return [c(k <= 66 ? 255 : 329.698727446 * Math.pow(k - 60, -0.1332047592)), c(k <= 66 ? 99.4708025861 * Math.log(k) - 161.1195681661 : 288.1221695283 * Math.pow(k - 60, -0.0755148492)), c(k >= 66 ? 255 : k <= 19 ? 0 : 138.5177312231 * Math.log(k - 10) - 305.0447927307)]; };
   const toColor = (rgb, sat) => new T.Color(1 + (rgb[0] - 1) * sat, 1 + (rgb[1] - 1) * sat, 1 + (rgb[2] - 1) * sat);
   function applyLight(time, e) {
-    const l = LOOK.luz, lt = smooth(0.2, 1, e) * (1 - 0.55 * liftE()), t = rad(l.tilt), dx = Math.sin(t), dy = Math.cos(t), hl = rad(l.open / 2 + l.asym / 2), hr = rad(l.open / 2 - l.asym / 2), s = 0.02 + 0.98 * Math.pow(l.edge / 100, 1.3);
-    U.uLA.value[0].set(l.ax, l.ay, dx, dy); U.uLB.value[0].set(Math.max(hl, 0.02), Math.max(hr, 0.02), s, l.reach); U.uLC.value[0].set(l.tip, l.bow / 100, l.core / 100, l.coreSize); U.uLD.value[0].set(l.fade / 100, 1, 0, 0);
+    const l = LOOK.luz, lt = smooth(0.2, 1, e) * (1 - 0.25 * liftE()), ay = l.ay + liftMM(), t = rad(l.tilt), dx = Math.sin(t), dy = Math.cos(t), hl = rad(l.open / 2 + l.asym / 2), hr = rad(l.open / 2 - l.asym / 2), s = 0.02 + 0.98 * Math.pow(l.edge / 100, 1.3);
+    U.uLA.value[0].set(l.ax, ay, dx, dy); U.uLB.value[0].set(Math.max(hl, 0.02), Math.max(hr, 0.02), s, l.reach); U.uLC.value[0].set(l.tip, l.bow / 100, l.core / 100, l.coreSize); U.uLD.value[0].set(l.fade / 100, 1, 0, 0);
     const ho = rad(l.haloOpen / 2), hs = 0.25 + 0.75 * (l.haloSoft / 100);
-    U.uLA.value[1].set(l.ax, l.ay, dx, dy); U.uLB.value[1].set(ho, ho, hs, l.reach * 1.5); U.uLC.value[1].set(l.tip * 2, 0, 0, 1); U.uLD.value[1].set(0.8, 1, 0, 0);
+    U.uLA.value[1].set(l.ax, ay, dx, dy); U.uLB.value[1].set(ho, ho, hs, l.reach * 1.5); U.uLC.value[1].set(l.tip * 2, 0, 0, 1); U.uLD.value[1].set(0.8, 1, 0, 0);
     const flick = 1 + (l.flicker / 100) * 0.2 * (Math.sin(time * l.flickerSpeed * 2.1) * 0.5 + Math.sin(time * l.flickerSpeed * 5.3 + 1.7) * 0.3 + Math.sin(time * l.flickerSpeed * 11.7) * 0.2);
     const d = Math.hypot(l.dist, 90), cut = 1100 - l.falloff * 7, dec = 1 + l.falloff / 100, att = Math.pow(Math.max(0.12, 1 - d / cut), dec), att0 = Math.pow(1 - 150 / cut, dec);
     const b = (l.inten / 100) * Math.pow(150 / d, 0.45) * 1.25 * att0 / att * flick, sat = l.sat / 100;
-    spot.color.copy(toColor(kelvin(l.temp), sat)); spot.intensity = b * lt; spot.distance = cut; spot.decay = dec; spot.position.set(l.ax, l.ay, l.dist); spot.target.position.set(l.ax + dx * 100, l.ay + dy * 100, 0);
+    spot.color.copy(toColor(kelvin(l.temp), sat)); spot.intensity = b * lt; spot.distance = cut; spot.decay = dec; spot.position.set(l.ax, ay, l.dist); spot.target.position.set(l.ax + dx * 100, ay + dy * 100, 0);
     halo.color.copy(toColor(kelvin(l.temp - 500), sat)); halo.intensity = b * lt * (l.halo / 100) * (1.1 - 0.8 * l.dk / 100); halo.position.copy(spot.position); halo.target.position.copy(spot.target.position);
-    amb.color.copy(toColor(kelvin(l.ambTemp), 1)); amb.intensity = (l.amb / 100) * (1 - 0.9 * l.dk / 100) * Math.min(1.5, l.inten / 100) * lt; flat.intensity = 1.75 * (1 - smooth(0.2, 1, e));
+    amb.color.copy(toColor(kelvin(l.ambTemp), 1)); amb.intensity = (l.amb / 100) * (1 - 0.9 * l.dk / 100) * Math.min(1.5, l.inten / 100) * lt * (1 + 1.6 * liftE()); flat.intensity = 1.75 * (1 - smooth(0.2, 1, e));
     vigEl.style.opacity = (((l.vig / 100) * (0.45 + 0.55 * l.dk / 100)) * e).toFixed(2); dimEl.style.opacity = e.toFixed(3); vigEl.style.setProperty('--vs', (0.6 + 0.4 * l.dk / 100).toFixed(2)); vigEl.style.setProperty('--grain', (l.grain / 100).toFixed(3));
     const v = new T.Vector3(0, -8, 0).project(camera), gc = kelvin(l.temp - 300).map((x) => Math.round(x * 255)).join(' ');
     glowEl.style.setProperty('--gc', gc); glowEl.style.transform = `translate(${((v.x + 1) / 2 * innerWidth).toFixed(1)}px, ${((1 - v.y) / 2 * innerHeight).toFixed(1)}px)`;
-    glowEl.style.opacity = ((l.glow / 100) * (0.6 + 0.4 * Math.min(1, l.inten / 100)) * flick * e).toFixed(2);
+    glowEl.style.opacity = ((l.glow / 100) * (0.6 + 0.4 * Math.min(1, l.inten / 100)) * flick * e * (1 - liftE())).toFixed(2);
     updateBar(e, true, 1);
   }
 
@@ -171,11 +171,13 @@ export function createFocus3D(h) {
     barGroup.traverse((o) => { if (o.material) o.material.userData.o = o.material.opacity; }); lampGroup.traverse((o) => { if (o.material) o.material.userData.o = o.material.opacity; });
   }
   const liftE = () => barLift * barLift * (3 - 2 * barLift);
+  // cuánto sube la barra (mm): hasta quedar por encima del borde de arriba de la hoja; la luz sube con ella
+  const liftMM = () => liftE() * Math.max(0, group.position.y + H / 2 + 20 - (LOOK.luz.ay - LOOK.barra.off - slitY));
   function updateBar(e, on, flick) {
     const B = LOOK.barra, l = LOOK.luz, y = l.ay - B.off - slitY, vis = smooth(0.5, 1, e);
     barGroup.visible = lampGroup.visible = vis > 0;
     // al pasar una hoja la barra se aparta: sube por encima del borde de arriba de la hoja y vuelve cuando la hoja ya cayó
-    const lift = liftE() * Math.max(0, group.position.y + H / 2 + 20 - y), yy = y + lift;
+    const yy = y + liftMM();
     barGroup.position.set(group.position.x + (barHoldX - group.position.x) * liftE(), yy, zc); lampGroup.position.set(l.ax, yy, zc);
     const k = kelvin(Math.max(2200, l.temp + 500)), lit = (on ? B.slit / 100 : 0.04) * flick;
     slitMat.color.setRGB(Math.min(1, k[0] * lit + 0.1 * lit), Math.min(1, k[1] * lit + 0.08 * lit), Math.min(1, k[2] * lit));
